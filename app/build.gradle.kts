@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "dev.adrian.thortools"
     compileSdk = 36
+    val releaseKeystorePath = System.getenv("THORTOOLS_KEYSTORE_PATH")
 
     defaultConfig {
         applicationId = "dev.adrian.thortools"
@@ -41,7 +42,11 @@ android {
             isDebuggable = false
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (releaseKeystorePath.isNullOrBlank()) {
+                signingConfigs.getByName("debug")
+            } else {
+                signingConfigs.getByName("release")
+            }
             matchingFallbacks += listOf("release")
         }
         getByName("release") {
