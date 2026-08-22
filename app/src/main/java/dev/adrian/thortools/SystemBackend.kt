@@ -67,6 +67,7 @@ data class ThorSnapshot(
     val backupAvailable: Boolean,
     val stockRestoreAvailable: Boolean = false,
     val patchedBackupAvailable: Boolean,
+    val patchedCacheAvailable: Boolean = false,
     val stockBackupSlots: Set<String> = emptySet(),
     val patchedBackupSlots: Set<String> = emptySet(),
     val operation: OperationState,
@@ -112,6 +113,7 @@ data class ThorSnapshot(
             backupAvailable = false,
             stockRestoreAvailable = false,
             patchedBackupAvailable = false,
+            patchedCacheAvailable = false,
             operation = operation,
         )
     }
@@ -220,6 +222,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             backupAvailable = PatchUtils.checkActiveSlotBackupExists(context),
             stockRestoreAvailable = PatchUtils.checkActiveSlotRestoreExists(context),
             patchedBackupAvailable = PatchUtils.checkBootMagiskExists(context),
+            patchedCacheAvailable = PatchUtils.hasPatchedCache(context),
             stockBackupSlots = PatchUtils.stockBackupSlots(context),
             patchedBackupSlots = PatchUtils.patchedBackupSlots(context),
             operation = operation,

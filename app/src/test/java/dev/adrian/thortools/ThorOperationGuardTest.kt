@@ -174,6 +174,7 @@ class ThorOperationGuardTest {
             backupAvailable = backupAvailable,
             stockRestoreAvailable = stockRestoreAvailable,
             patchedBackupAvailable = patchedBackupAvailable,
+            patchedCacheAvailable = patchedBackupAvailable,
             operation = OperationState(),
         )
     }

@@ -64,10 +64,12 @@ class ThorToolsInstrumentedTest {
         assertTrue(backend.snapshot().stockRestoreAvailable)
         assertTrue(backend.perform(ThorOperation.PATCH).success)
         assertTrue(backend.snapshot().patchedBackupAvailable)
+        assertTrue(backend.snapshot().patchedCacheAvailable)
         assertTrue(backend.perform(ThorOperation.CLEAR_CACHE).success)
         val snapshot = backend.snapshot()
         assertEquals(setOf("_a", "_b"), snapshot.stockBackupSlots)
         assertTrue(snapshot.patchedBackupSlots.isEmpty())
+        assertFalse(snapshot.patchedCacheAvailable)
     }
 
     @Test
