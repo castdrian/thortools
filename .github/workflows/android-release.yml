@@ -68,6 +68,10 @@ jobs:
           THORTOOLS_KEYSTORE_PASSWORD: ${{ secrets.THORTOOLS_KEYSTORE_PASSWORD }}
           THORTOOLS_KEY_ALIAS: ${{ secrets.THORTOOLS_KEY_ALIAS }}
           THORTOOLS_KEY_PASSWORD: ${{ secrets.THORTOOLS_KEY_PASSWORD }}
+          THORTOOLS_ALPHA_KEYSTORE_BASE64: ${{ secrets.THORTOOLS_ALPHA_KEYSTORE_BASE64 }}
+          THORTOOLS_ALPHA_KEYSTORE_PASSWORD: ${{ secrets.THORTOOLS_ALPHA_KEYSTORE_PASSWORD }}
+          THORTOOLS_ALPHA_KEY_ALIAS: ${{ secrets.THORTOOLS_ALPHA_KEY_ALIAS }}
+          THORTOOLS_ALPHA_KEY_PASSWORD: ${{ secrets.THORTOOLS_ALPHA_KEY_PASSWORD }}
         run: |
           [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)\.([1-9][0-9]*))?$ ]] || exit 1
           release_version="${RELEASE_TAG#v}"
@@ -115,8 +119,18 @@ jobs:
             *) exit 1 ;;
           esac
           build_type=release
+          alpha_signing=false
           if [[ "$release_channel" == "alpha" ]]; then
             build_type=alpha
+            if [[ -n "$THORTOOLS_ALPHA_KEYSTORE_BASE64" && -n "$THORTOOLS_ALPHA_KEYSTORE_PASSWORD" && -n "$THORTOOLS_ALPHA_KEY_ALIAS" && -n "$THORTOOLS_ALPHA_KEY_PASSWORD" ]]; then
+              keystore_path="$RUNNER_TEMP/thortools-alpha.jks"
+              printf '%s' "$THORTOOLS_ALPHA_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+              echo "THORTOOLS_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
+              echo "THORTOOLS_KEYSTORE_PASSWORD=$THORTOOLS_ALPHA_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+              echo "THORTOOLS_KEY_ALIAS=$THORTOOLS_ALPHA_KEY_ALIAS" >> "$GITHUB_ENV"
+              echo "THORTOOLS_KEY_PASSWORD=$THORTOOLS_ALPHA_KEY_PASSWORD" >> "$GITHUB_ENV"
+              alpha_signing=true
+            fi
           else
             test -n "$THORTOOLS_KEYSTORE_BASE64"
             test -n "$THORTOOLS_KEYSTORE_PASSWORD"
@@ -134,6 +148,7 @@ jobs:
           echo "channel=$release_channel" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
           echo "build_type=$build_type" >> "$GITHUB_OUTPUT"
+          echo "alpha_signing=$alpha_signing" >> "$GITHUB_OUTPUT"
 
       - name: Build alpha APK
         if: steps.release.outputs.channel == 'alpha'
@@ -153,7 +168,11 @@ jobs:
           release_apk="$(find app/build/outputs/apk/alpha -type f -name 'thortools-*.apk' -print -quit)"
           test -n "$release_apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$release_apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$release_apk" | grep -Fq 'CN=Android Debug'
+          if [[ "${{ steps.release.outputs.alpha_signing }}" == "true" ]]; then
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$release_apk" | grep -Fq 'CN=ThorTools Alpha'
+          else
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$release_apk" | grep -Fq 'CN=Android Debug'
+          fi
           package_info="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$release_apk")"
           package_name="$(printf '%s\n' "$package_info" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
           test "$package_name" = "dev.adrian.thortools"
