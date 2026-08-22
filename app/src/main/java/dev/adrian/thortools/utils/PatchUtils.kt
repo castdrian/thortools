@@ -90,6 +90,11 @@ object PatchUtils {
         )
     }
 
+    fun hasPatchedCache(context: Context): Boolean =
+        RecoveryManifestStore.records(context).any { it.patched } || slots.any { slot ->
+            partitions.any { partition -> nonEmpty(patchedPath(context, partition, slot)) }
+        }
+
     fun imagePaths(context: Context): Map<String, String> = slots.flatMap { slot ->
         listOf(
             "init_boot$slot.img" to stockPath(context, "init_boot", slot),

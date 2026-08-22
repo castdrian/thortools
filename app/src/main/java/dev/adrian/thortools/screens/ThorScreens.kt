@@ -389,7 +389,7 @@ private fun RootPanel(session: ThorSession, context: Context, isLowerDisplay: Bo
         Button(enabled = operationReady(ThorOperation.FLASH), onClick = { pendingOperation = ThorOperation.FLASH }, modifier = Modifier.fillMaxWidth()) { Text("Flash active-slot patch") }
         Button(enabled = operationReady(ThorOperation.RESTORE), onClick = { pendingOperation = ThorOperation.RESTORE }, modifier = Modifier.fillMaxWidth()) { Text("Restore stock image") }
         OutlinedButton(enabled = operationReady(ThorOperation.REBOOT), onClick = { pendingOperation = ThorOperation.REBOOT }, modifier = Modifier.fillMaxWidth()) { Text("Reboot Thor") }
-        OutlinedButton(enabled = operationReady(ThorOperation.CLEAR_CACHE) && snapshot.patchedBackupSlots.isNotEmpty(), onClick = { pendingOperation = ThorOperation.CLEAR_CACHE }, modifier = Modifier.fillMaxWidth()) { Text("Clear patched cache") }
+        OutlinedButton(enabled = operationReady(ThorOperation.CLEAR_CACHE) && snapshot.patchedCacheAvailable, onClick = { pendingOperation = ThorOperation.CLEAR_CACHE }, modifier = Modifier.fillMaxWidth()) { Text("Clear patched cache") }
         if (!thorReady) Text("This device is in diagnostics-only mode because it is not an AYN Thor.", color = MaterialTheme.colorScheme.error)
         if (thorReady && !rootReady) Text("This Thor is in diagnostics-only mode until the privileged service and active slot are available.", color = MaterialTheme.colorScheme.error)
         backupReason?.let { Text(it, color = MaterialTheme.colorScheme.error) }
