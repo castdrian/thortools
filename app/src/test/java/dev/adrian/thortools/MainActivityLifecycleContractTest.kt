@@ -35,8 +35,12 @@ class MainActivityLifecycleContractTest {
         val pause = source.substringAfter("override fun onPause()").substringBefore("override fun onConfigurationChanged")
 
         assertTrue(source.contains("private var activityResumed = false"))
+        assertTrue(source.contains("private var sessionLoaded = false"))
+        assertTrue(source.contains("sessionLoaded = true"))
         assertFalse(start.contains("activityResumed = true"))
         assertTrue(resume.contains("activityResumed = true"))
+        assertTrue(resume.contains("if (sessionLoaded)"))
+        assertTrue(resume.contains("session.refresh()"))
         assertTrue(pause.contains("activityResumed = false"))
         assertTrue(source.contains("!activityResumed || isFinishing"))
 
