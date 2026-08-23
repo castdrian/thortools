@@ -2,6 +2,7 @@ package dev.adrian.thortools.screens
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -71,11 +72,13 @@ fun ThorControlScreen(
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize()) {
             ControlHeader(session.snapshot, section) { section = it }
-            when (section) {
-                ThorSection.STATUS -> StatusPanel(session.snapshot, context)
-                ThorSection.TWEAKS -> TweaksPanel(session, context, operationScope)
-                ThorSection.ROOT -> RootPanel(session, context, operationScope, isLowerDisplay)
-                ThorSection.ABOUT -> AboutPanel(context)
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                when (section) {
+                    ThorSection.STATUS -> StatusPanel(session.snapshot, context)
+                    ThorSection.TWEAKS -> TweaksPanel(session, context, operationScope)
+                    ThorSection.ROOT -> RootPanel(session, context, operationScope, isLowerDisplay)
+                    ThorSection.ABOUT -> AboutPanel(context)
+                }
             }
             if (session.snapshot.operation.status == OperationStatus.RUNNING) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
