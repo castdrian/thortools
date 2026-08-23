@@ -3,6 +3,7 @@ package dev.adrian.thortools
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
+import android.content.ComponentName
 import android.content.pm.ActivityInfo
 import android.hardware.display.DisplayManager
 import androidx.lifecycle.Lifecycle
@@ -29,6 +30,16 @@ class ThorToolsInstrumentedTest {
     fun usesThorToolsApplicationId() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         assertTrue(context.packageName.startsWith("dev.adrian.thortools"))
+    }
+
+    @Test
+    fun keepsBootReceiverPrivateToTheApplication() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val receiver = context.packageManager.getReceiverInfo(
+            ComponentName(context, BootReceiver::class.java),
+            0,
+        )
+        assertFalse(receiver.exported)
     }
 
     @Test
