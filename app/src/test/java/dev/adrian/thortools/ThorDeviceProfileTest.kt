@@ -18,6 +18,10 @@ class ThorDeviceProfileTest {
         assertTrue(DeviceProfile.detect(DeviceProperties(product = "AYN Thor Max")).isThor)
         assertEquals(ThorVariant.PRO, DeviceProfile.detect(DeviceProperties(model = "AYN/Thor Pro")).variant)
         assertEquals(ThorVariant.LITE, DeviceProfile.detect(DeviceProperties(model = "AYN.Thor Lite")).variant)
+        assertEquals(ThorVariant.LITE, DeviceProfile.detect(DeviceProperties(model = "AYN Thor", board = "sm8250")).variant)
+        assertEquals(ThorVariant.LITE, DeviceProfile.detect(DeviceProperties(model = "AYN Thor", board = "kona")).variant)
+        assertEquals(ThorVariant.UNKNOWN, DeviceProfile.detect(DeviceProperties(model = "AYN Thor", board = "lahaina")).variant)
+        assertEquals(ThorVariant.UNKNOWN, DeviceProfile.detect(DeviceProperties(model = "AYN Thor", board = "kalama")).variant)
         assertTrue(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", model = "Thor")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(hardware = "thor_lite")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(board = "thor_max_board")).isThor)
@@ -26,7 +30,8 @@ class ThorDeviceProfileTest {
     @Test
     fun classifiesEveryThorVariant() {
         assertEquals(ThorVariant.LITE, DeviceProfile.variantFor("AYN Thor Lite"))
-        assertEquals(ThorVariant.BASE, DeviceProfile.variantFor("AYN Thor"))
+        assertEquals(ThorVariant.UNKNOWN, DeviceProfile.variantFor("AYN Thor"))
+        assertEquals(ThorVariant.BASE, DeviceProfile.variantFor("AYN Thor Base"))
         assertEquals(ThorVariant.PRO, DeviceProfile.variantFor("AYN Thor Pro"))
         assertEquals(ThorVariant.MAX, DeviceProfile.variantFor("AYN Thor Max"))
         assertEquals(ThorVariant.PRO, DeviceProfile.variantFor("thorpro"))

@@ -88,7 +88,7 @@ object DeviceProfile {
             properties.platform,
         ).joinToString(" ").normalized()
         val isThor = thorPattern.containsMatchIn(searchable)
-        return ThorDeviceProfile(properties, isThor, variantFor(searchable))
+        return ThorDeviceProfile(properties, isThor, variantFor(properties))
     }
 
     fun variantFor(value: String): ThorVariant {
@@ -98,12 +98,41 @@ object DeviceProfile {
             normalized.contains("lite") -> ThorVariant.LITE
             normalized.contains("max") -> ThorVariant.MAX
             normalized.contains("pro") -> ThorVariant.PRO
-            normalized.contains("thor") -> ThorVariant.BASE
+            normalized.contains("base") -> ThorVariant.BASE
             else -> ThorVariant.UNKNOWN
         }
     }
 
+    fun variantFor(properties: DeviceProperties): ThorVariant {
+        val explicitVariant = variantFor(
+            listOf(
+                properties.model,
+                properties.device,
+                properties.product,
+                properties.board,
+                properties.hardware,
+                properties.soc,
+                properties.platform,
+            ).joinToString(" "),
+        )
+        if (explicitVariant != ThorVariant.UNKNOWN) return explicitVariant
+        if (isLitePlatform(properties)) return ThorVariant.LITE
+        return ThorVariant.UNKNOWN
+    }
+
+    private fun isLitePlatform(properties: DeviceProperties): Boolean {
+        val platform = listOf(
+            properties.board,
+            properties.hardware,
+            properties.soc,
+            properties.platform,
+        ).joinToString(" ").normalized()
+        return litePlatformPattern.containsMatchIn(platform)
+    }
+
     private fun String.normalized(): String = identifierSeparatorPattern.replace(lowercase(), " ").trim()
+
+    private val litePlatformPattern = Regex("(^|\\s)(sm8250|kona)(\\s|$)")
 
     fun isThorLowerDisplay(
         widthPixels: Int,
