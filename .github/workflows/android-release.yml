@@ -69,7 +69,7 @@ jobs:
           release_commit="$(git rev-list -n 1 "$RELEASE_TAG")"
           test -n "$release_commit"
           git merge-base --is-ancestor "$release_commit" origin/main
-          ci_run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow android-ci.yml --commit "$release_commit" --limit 20 --json databaseId,status,conclusion --jq 'map(select(.status == "completed" and .conclusion == "success")) | .[0].databaseId // empty')"
+          ci_run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow android-ci.yml --commit "$release_commit" --limit 20 --json databaseId,status,conclusion,event,headBranch --jq 'map(select(.status == "completed" and .conclusion == "success" and .event == "push" and .headBranch == "main")) | .[0].databaseId // empty')"
           test -n "$ci_run_id"
           ci_jobs="$(gh run view "$ci_run_id" --repo "$GITHUB_REPOSITORY" --json jobs --jq '[.jobs[] | select(.name == "validate" or .name == "instrumented") | .conclusion] | sort | join(",")')"
           test "$ci_jobs" = "success,success"
