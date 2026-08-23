@@ -218,7 +218,14 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
                 },
             )
             DataLine("Stock restore source", if (snapshot.stockRestoreAvailable) "Available" else "Unavailable")
-            DataLine("Patched backups", "${snapshot.patchedBackupSlots.size}/2 slots")
+            DataLine(
+                "Patched backups",
+                if (snapshot.availableBootSlots.isEmpty()) {
+                    "Unavailable"
+                } else {
+                    "${snapshot.patchedBackupSlots.size}/${snapshot.availableBootSlots.size} slots"
+                },
+            )
             DataLine("Battery", if (snapshot.batteryPercent > 0) "${snapshot.batteryPercent}%" else "Unavailable")
             DataLine("Kernel", snapshot.kernelVersion.ifBlank { "Unavailable" })
         }
@@ -504,9 +511,9 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
             else -> "Confirm operation?"
         }
         val message = when (operation) {
-            ThorOperation.BACKUP -> "This reads both available Thor boot slots and stores stock images in the recovery folder."
+            ThorOperation.BACKUP -> "This reads every available Thor boot slot and stores stock images in the recovery folder."
             ThorOperation.PATCH -> "This asks Magisk to patch the current active-slot stock image."
-            ThorOperation.FLASH -> "This writes the patched image to the current active Thor slot. Reboot after confirming that both stock backups are stored safely."
+            ThorOperation.FLASH -> "This writes the patched image to the current active Thor slot. Reboot after confirming that every available stock backup is stored safely."
             ThorOperation.RESTORE -> "This writes the stock image to the current active Thor slot. Reboot the Thor after the operation completes."
             ThorOperation.REBOOT -> "This reboots the Thor without changing its partitions."
             ThorOperation.CLEAR_CACHE -> "This removes Magisk-patched images from the recovery folder but keeps all stock backups available for restore."
