@@ -43,6 +43,7 @@ import dev.adrian.thortools.OperationStatus
 import dev.adrian.thortools.ThorCapability
 import dev.adrian.thortools.ThorOperation
 import dev.adrian.thortools.ThorOperationGuard
+import dev.adrian.thortools.ThorRecoveryGuidance
 import dev.adrian.thortools.ThorSession
 import dev.adrian.thortools.ThorSnapshot
 import dev.adrian.thortools.ThorVariant
@@ -121,6 +122,7 @@ fun ThorDashboardScreen(session: ThorSession, context: Context, modifier: Modifi
             DashboardCapabilities(session.snapshot)
             DashboardOperations(session.snapshot)
             DashboardOperation(session.snapshot, context)
+            DashboardRecoveryGuidance(session.snapshot)
             if (session.snapshot.stockBackupSlots.isNotEmpty() || session.snapshot.patchedBackupSlots.isNotEmpty()) {
                 DashboardHashes(context, session.snapshot)
             }
@@ -170,6 +172,7 @@ private fun StatusPanel(snapshot: ThorSnapshot, context: Context) {
         DashboardCapabilities(snapshot)
         DashboardOperations(snapshot)
         DashboardOperation(snapshot, context)
+        DashboardRecoveryGuidance(snapshot)
         if (snapshot.stockBackupSlots.isNotEmpty() || snapshot.patchedBackupSlots.isNotEmpty()) DashboardHashes(context, snapshot)
     }
 }
@@ -262,6 +265,16 @@ private fun DashboardOperation(snapshot: ThorSnapshot, context: Context) {
             Text("Recovery folder: ${context.getExternalFilesDir(null)?.absolutePath ?: "Unavailable"}", style = MaterialTheme.typography.bodySmall)
             Text("Latest operation log: ${getLogFile(context)?.absolutePath ?: "Unavailable"}", style = MaterialTheme.typography.bodySmall)
             Text("Download folder: /storage/emulated/0/Download", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+private fun DashboardRecoveryGuidance(snapshot: ThorSnapshot) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Recovery guidance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(ThorRecoveryGuidance.forSnapshot(snapshot))
         }
     }
 }
