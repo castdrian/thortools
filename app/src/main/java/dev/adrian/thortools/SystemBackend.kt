@@ -176,8 +176,12 @@ data class OperationResult(
 private fun pendingRebootState(context: Context): OperationState? {
     val prefs = AppSettings.getSharedPrefs(context)
     val name = prefs.getString(AppSettings.PENDING_REBOOT_OPERATION_KEY, null) ?: return null
-    val marker = prefs.getLong(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, Long.MIN_VALUE)
-    if (marker != SystemUtils.getBootMarker()) {
+    val marker = runCatching {
+        prefs.getString(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, null)
+    }.getOrNull() ?: runCatching {
+        prefs.getLong(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, Long.MIN_VALUE).toString()
+    }.getOrNull()
+    if (marker != SystemUtils.getBootMarker(context)) {
         clearPendingReboot(context)
         return null
     }
@@ -198,7 +202,7 @@ private fun persistPendingReboot(context: Context, state: OperationState): Boole
         .putString(AppSettings.PENDING_REBOOT_OPERATION_KEY, state.operation?.name)
         .putString(AppSettings.PENDING_REBOOT_MESSAGE_KEY, state.message)
         .putString(AppSettings.PENDING_REBOOT_STATUS_KEY, state.status.name)
-        .putLong(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, SystemUtils.getBootMarker())
+        .putString(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, SystemUtils.getBootMarker(context))
         .commit()
 
 private fun clearPendingReboot(context: Context) {

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.SystemClock
+import android.provider.Settings
 import dev.adrian.thortools.DeviceProfile
 import dev.adrian.thortools.DeviceProperties
 import java.io.BufferedReader
@@ -88,7 +89,13 @@ object SystemUtils {
         return if (level >= 0 && scale > 0) (level * 100 / scale).coerceIn(0, 100) else null
     }
 
-    fun getBootMarker(): Long = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+    fun getBootMarker(context: Context): String =
+        runCommand(arrayOf("cat", "/proc/sys/kernel/random/boot_id")).stdout
+            .trim()
+            .takeIf(String::isNotBlank)
+            ?: Settings.Global.getString(context.contentResolver, Settings.Global.BOOT_COUNT)
+                ?.takeIf(String::isNotBlank)
+            ?: (System.currentTimeMillis() - SystemClock.elapsedRealtime()).toString()
 
     fun runCommand(command: Array<String>): RuntimeExecResult {
         var process: Process? = null
