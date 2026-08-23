@@ -1,6 +1,9 @@
 package dev.adrian.thortools.screens
 
 import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +45,7 @@ import dev.adrian.thortools.AppSettings
 import dev.adrian.thortools.DeviceProfile
 import dev.adrian.thortools.OperationStatus
 import dev.adrian.thortools.ThorCapability
+import dev.adrian.thortools.ThorDiagnosticsReport
 import dev.adrian.thortools.ThorDisplayDiagnostics
 import dev.adrian.thortools.ThorDisplayPanel
 import dev.adrian.thortools.ThorOperation
@@ -82,7 +86,7 @@ fun ThorControlScreen(
                     ThorSection.STATUS -> StatusPanel(session.snapshot, context)
                     ThorSection.TWEAKS -> TweaksPanel(session, context, operationScope)
                     ThorSection.ROOT -> RootPanel(session, context, operationScope, isLowerDisplay)
-                    ThorSection.ABOUT -> AboutPanel(context)
+                    ThorSection.ABOUT -> AboutPanel(context, session.snapshot)
                 }
             }
             if (session.snapshot.operation.status == OperationStatus.RUNNING) {
@@ -558,7 +562,7 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
 }
 
 @Composable
-private fun AboutPanel(context: Context) {
+private fun AboutPanel(context: Context, snapshot: ThorSnapshot) {
     val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0.1.0-alpha.1"
     Column(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(rememberScrollState()).padding(20.dp),
@@ -570,6 +574,22 @@ private fun AboutPanel(context: Context) {
         Text("Open source under the GPLv2 license.")
         Text("Forked from FeralAI/o2ptweaks.app with upstream history preserved.")
         Text("Support the project at github.com/sponsors/castdrian or ko-fi.com/castdrian.")
+        OutlinedButton(
+            onClick = {
+                val report = ThorDiagnosticsReport.build(
+                    snapshot = snapshot,
+                    records = RecoveryManifestStore.records(context),
+                    recoveryPath = context.getExternalFilesDir(null)?.absolutePath ?: "Unavailable",
+                    logPath = getLogFile(context)?.absolutePath ?: "Unavailable",
+                )
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                clipboard?.setPrimaryClip(ClipData.newPlainText("ThorTools diagnostics", report))
+                Toast.makeText(context, "Thor diagnostics copied", Toast.LENGTH_SHORT).show()
+            },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        ) {
+            Text("Copy diagnostics")
+        }
     }
 }
 
