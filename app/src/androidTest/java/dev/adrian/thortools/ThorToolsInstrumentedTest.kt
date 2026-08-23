@@ -428,4 +428,118 @@ class ThorToolsInstrumentedTest {
                 .commit()
         }
     }
+
+    @Test
+    fun keepsRebootLockAfterAnInterruptedWrite() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val baseline = SystemBackendFactory.create(context).snapshot().copy(
+            backupAvailable = true,
+            stockRestoreAvailable = true,
+            patchedBackupAvailable = true,
+            stockBackupSlots = setOf("_a", "_b"),
+        )
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = baseline.copy(operation = operation)
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult {
+                started.countDown()
+                release.await()
+                return OperationResult(true, "unexpected completion")
+            }
+        }
+        val scope = CoroutineScope(Dispatchers.IO)
+        try {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+            val session = ThorSession(context, backend)
+            session.load()
+            session.run(scope, ThorOperation.FLASH)
+            assertTrue(started.await(5, TimeUnit.SECONDS))
+            scope.cancel()
+            release.countDown()
+            withTimeout(5_000L) {
+                while (session.snapshot.operation.status != OperationStatus.INTERRUPTED) delay(10L)
+            }
+            assertTrue(session.snapshot.operation.rebootRequired)
+            assertTrue(preferences.contains(AppSettings.PENDING_REBOOT_OPERATION_KEY))
+            assertTrue(session.acknowledgeInterruptedOperation())
+            assertTrue(session.snapshot.operation.rebootRequired)
+            assertEquals(
+                "Reboot the Thor before starting another operation",
+                ThorOperationGuard.validate(session.snapshot, ThorOperation.SET_DPI),
+            )
+        } finally {
+            release.countDown()
+            scope.cancel()
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+        }
+    }
+
+    @Test
+    fun marksAnUnexpectedWriteFailureAsRebootRequired() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val baseline = SystemBackendFactory.create(context).snapshot().copy(
+            backupAvailable = true,
+            stockRestoreAvailable = true,
+            patchedBackupAvailable = true,
+            stockBackupSlots = setOf("_a", "_b"),
+        )
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = baseline.copy(operation = operation)
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult {
+                throw IllegalStateException("write service failed")
+            }
+        }
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        try {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+            val session = ThorSession(context, backend)
+            session.load()
+            session.run(scope, ThorOperation.FLASH)
+            withTimeout(5_000L) {
+                while (session.snapshot.operation.status != OperationStatus.FAILURE) delay(10L)
+            }
+            assertTrue(session.snapshot.operation.rebootRequired)
+            assertTrue(preferences.contains(AppSettings.PENDING_REBOOT_OPERATION_KEY))
+            assertEquals(
+                "Reboot the Thor before starting another operation",
+                ThorOperationGuard.validate(session.snapshot, ThorOperation.SET_DPI),
+            )
+        } finally {
+            scope.cancel()
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+        }
+    }
 }

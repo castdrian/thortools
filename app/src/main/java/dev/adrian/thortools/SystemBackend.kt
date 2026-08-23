@@ -39,6 +39,14 @@ private val ThorOperation.requiresThor: Boolean
 private val ThorOperation.requiresRootService: Boolean
     get() = this !in setOf(ThorOperation.REFRESH, ThorOperation.INSTALL_MAGISK, ThorOperation.CLEAR_CACHE)
 
+private val ThorOperation.requiresRebootAfterWrite: Boolean
+    get() = this in setOf(
+        ThorOperation.FLASH,
+        ThorOperation.RESTORE,
+        ThorOperation.SET_VOLUME_STEPS,
+        ThorOperation.SET_BOOT_ANIMATION,
+    )
+
 enum class OperationStatus {
     IDLE,
     RUNNING,
@@ -532,6 +540,7 @@ class ThorSession(
                     operation = snapshot.operation.operation,
                     status = OperationStatus.IDLE,
                     message = "Recovery record acknowledged; review the current Thor state before retrying",
+                    rebootRequired = hasPendingReboot(context),
                 ),
             )
         } else {
@@ -566,16 +575,25 @@ class ThorSession(
                 withContext(Dispatchers.IO) { backend.perform(operation, argument) }
             } catch (error: CancellationException) {
                 if (snapshot.operation == running) {
-                    snapshot = snapshot.copy(
-                        operation = running.copy(
-                            status = OperationStatus.INTERRUPTED,
-                            message = "Operation interrupted; verify the Thor state before retrying",
-                        ),
+                    val interrupted = running.copy(
+                        status = OperationStatus.INTERRUPTED,
+                        message = if (operation.requiresRebootAfterWrite) {
+                            "Operation interrupted; reboot the Thor before retrying or restoring"
+                        } else {
+                            "Operation interrupted; verify the Thor state before retrying"
+                        },
+                        rebootRequired = operation.requiresRebootAfterWrite,
                     )
+                    if (interrupted.rebootRequired) persistPendingReboot(context, interrupted)
+                    snapshot = snapshot.copy(operation = interrupted)
                 }
                 throw error
             } catch (error: Throwable) {
-                OperationResult(false, error.message?.takeIf { it.isNotBlank() } ?: "The operation failed")
+                OperationResult(
+                    success = false,
+                    message = error.message?.takeIf { it.isNotBlank() } ?: "The operation failed",
+                    rebootRequired = operation.requiresRebootAfterWrite,
+                )
             }
             val finished = OperationState(
                 operation,
