@@ -118,6 +118,16 @@ class RecoveryScriptContractTest {
         assertTrue(source.contains("THORTOOLS_LOG_PATH="))
         assertTrue(source.contains(": > \${shellQuote(logPath)} &&"))
         assertTrue(source.contains(">> \${shellQuote(logPath)} 2>&1"))
+        assertTrue(source.contains("clearLog: Boolean = true"))
+        assertTrue(source.contains("val logPreparation = if (clearLog)"))
+    }
+
+    @Test
+    fun backupCombinesInitBootAndBootResultsInOneLog() {
+        val source = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
+        assertTrue(source.contains("var clearLog = true"))
+        assertTrue(source.contains("runRootScript(context, script, clearLog = clearLog)"))
+        assertTrue(source.contains("clearLog = false"))
     }
 
     @Test

@@ -23,8 +23,14 @@ object PatchUtils {
                 (bootRequired && RootUtils.hasPartition(context, "boot", slot))
         }.toSet()
         if (requiredSlots.isEmpty()) return false
-        val initBootBackedUp = !initBootRequired || RootUtils.runRootScript(context, "init_boot.backup.sh") == "0"
-        val bootBackedUp = !bootRequired || RootUtils.runRootScript(context, "boot.backup.sh") == "0"
+        var clearLog = true
+        fun runBackupScript(script: String): Boolean {
+            val result = RootUtils.runRootScript(context, script, clearLog = clearLog) == "0"
+            clearLog = false
+            return result
+        }
+        val initBootBackedUp = !initBootRequired || runBackupScript("init_boot.backup.sh")
+        val bootBackedUp = !bootRequired || runBackupScript("boot.backup.sh")
         if (!initBootBackedUp || !bootBackedUp) return false
         if (stableSlot(slot) == null) return false
         if (!RecoveryManifestStore.recordLocalImages(context, localImageInputs(context, patched = false))) return false

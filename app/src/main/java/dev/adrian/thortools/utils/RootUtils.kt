@@ -88,14 +88,22 @@ object RootUtils {
     fun runRootAction(context: Context, command: String): Boolean =
         RootExec().executeAsRoot("$command >/dev/null 2>&1; printf '%s' \$?").getOrNull() == "0"
 
-    fun runRootScript(context: Context, script: String, arguments: List<String> = emptyList()): String? {
+    fun runRootScript(
+        context: Context,
+        script: String,
+        arguments: List<String> = emptyList(),
+        clearLog: Boolean = true,
+    ): String? {
         if (!script.matches(Regex("[A-Za-z0-9_.-]+"))) return null
         val filesPath = File(context.filesDir, ASSET_SUBFOLDER).absolutePath
         val logPath = getLogFile(context)?.absolutePath ?: return null
         val workingPath = context.getExternalFilesDir(null)?.absolutePath ?: return null
         val scriptPath = "$filesPath/support/subscripts/$script"
         val commandArguments = arguments.joinToString(" ") { shellQuote(it) }
-        val command = ": > ${shellQuote(logPath)} && THORTOOLS_WORKING_PATH=${shellQuote(workingPath)} THORTOOLS_LOG_PATH=${shellQuote(logPath)} sh ${shellQuote(scriptPath)} $commandArguments >> ${shellQuote(logPath)} 2>&1; printf '%s' $?"
+        val logPreparation = if (clearLog) ": > ${shellQuote(logPath)} && " else ""
+        val command = "$logPreparation" +
+            "THORTOOLS_WORKING_PATH=${shellQuote(workingPath)} THORTOOLS_LOG_PATH=${shellQuote(logPath)} " +
+            "sh ${shellQuote(scriptPath)} $commandArguments >> ${shellQuote(logPath)} 2>&1; printf '%s' $?"
         return RootExec().executeAsRoot(command).getOrNull()
     }
 
