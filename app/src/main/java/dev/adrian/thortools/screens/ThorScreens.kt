@@ -128,7 +128,7 @@ fun ThorDashboardScreen(session: ThorSession, context: Context, modifier: Modifi
             DashboardOperations(session.snapshot)
             DashboardOperation(session.snapshot, context)
             DashboardRecoveryGuidance(session.snapshot)
-            if (session.snapshot.stockBackupSlots.isNotEmpty() || session.snapshot.patchedBackupSlots.isNotEmpty()) {
+            if (RecoveryManifestStore.records(context).isNotEmpty()) {
                 DashboardHashes(context, session.snapshot)
             }
         }
@@ -179,7 +179,7 @@ private fun StatusPanel(snapshot: ThorSnapshot, context: Context) {
         DashboardOperations(snapshot)
         DashboardOperation(snapshot, context)
         DashboardRecoveryGuidance(snapshot)
-        if (snapshot.stockBackupSlots.isNotEmpty() || snapshot.patchedBackupSlots.isNotEmpty()) DashboardHashes(context, snapshot)
+        if (RecoveryManifestStore.records(context).isNotEmpty()) DashboardHashes(context, snapshot)
     }
 }
 
