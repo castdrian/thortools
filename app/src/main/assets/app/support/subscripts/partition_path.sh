@@ -11,3 +11,17 @@ resolve_partition() {
     done
     return 1
 }
+
+normalize_slot() {
+    case "$1" in
+        a|_a) printf '%s' "_a" ;;
+        b|_b) printf '%s' "_b" ;;
+        *) return 1 ;;
+    esac
+}
+
+require_active_slot() {
+    EXPECTED_SLOT="$(normalize_slot "$1")" || return 1
+    ACTIVE_SLOT="$(normalize_slot "$(getprop ro.boot.slot_suffix)")" || return 1
+    [ "$ACTIVE_SLOT" = "$EXPECTED_SLOT" ]
+}

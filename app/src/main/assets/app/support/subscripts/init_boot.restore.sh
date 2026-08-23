@@ -10,13 +10,10 @@ LOG_FILE="$WORKING_PATH/init_boot.restore.log"
 
 echo "Restore init_boot.img starting..." > $LOG_FILE
 
-ACTIVE_SLOT=$(getprop ro.boot.slot_suffix)
-case "$ACTIVE_SLOT" in
-    a) ACTIVE_SLOT="_a" ;;
-    b) ACTIVE_SLOT="_b" ;;
-    _a|_b) ;;
-    *) exit 1 ;;
-esac
+if ! require_active_slot "$2"; then
+    echo "Active slot changed before init_boot restore" >> "$LOG_FILE"
+    exit 2
+fi
 BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"
 BOOT_IMG="${1:-$WORKING_PATH/init_boot$ACTIVE_SLOT.img}"
 if [ ! -s "$BOOT_IMG" ]; then
