@@ -16,9 +16,12 @@ class MainActivityLifecycleContractTest {
 
         assertTrue(source.contains("private var secondaryPresentationRequested = false"))
         assertTrue(source.contains("private var displayRefreshJob: Job? = null"))
+        assertTrue(source.contains("hasThorLowerDisplay = findThorLowerDisplay() != null"))
+        assertTrue(source.contains("private fun findThorLowerDisplay(): Display?"))
         assertTrue(source.contains("secondaryPresentationRequested = true"))
         assertTrue(source.contains("scheduleDisplayRefresh()"))
         assertTrue(show.contains("!secondaryPresentationRequested || !activityResumed || isFinishing"))
+        assertTrue(show.contains("val display = findThorLowerDisplay()"))
         assertTrue(show.contains("if (display == null)"))
         assertTrue(show.contains("scheduleSecondaryDisplayRetry()"))
         assertTrue(show.contains("candidate.rotationOrNull()"))

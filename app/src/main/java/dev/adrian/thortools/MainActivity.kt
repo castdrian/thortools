@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         session = ThorSession(this)
         displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        hasThorLowerDisplay = findThorLowerDisplay() != null
         configureThorWindow(window)
         lifecycleScope.launch {
             session.load()
@@ -133,20 +134,7 @@ class MainActivity : ComponentActivity() {
 
     private fun showSecondaryDisplay() {
         if (!secondaryPresentationRequested || !activityResumed || isFinishing) return
-        val display = runCatching { displayManager?.displays?.toList().orEmpty() }
-            .getOrDefault(emptyList())
-            .firstOrNull { candidate ->
-            candidate.displayId != Display.DEFAULT_DISPLAY &&
-                candidate.modeOrNull()?.let { mode ->
-                    candidate.rotationOrNull()?.let { rotation ->
-                        DeviceProfile.isThorLowerDisplay(
-                            mode.physicalWidth,
-                            mode.physicalHeight,
-                            rotation,
-                        )
-                    }
-                } == true
-            }
+        val display = findThorLowerDisplay()
         if (display == null) {
             dismissSecondaryDisplay()
             scheduleSecondaryDisplayRetry()
@@ -185,6 +173,21 @@ class MainActivity : ComponentActivity() {
             scheduleSecondaryDisplayRetry()
         }
     }
+
+    private fun findThorLowerDisplay(): Display? = runCatching { displayManager?.displays?.toList().orEmpty() }
+        .getOrDefault(emptyList())
+        .firstOrNull { candidate ->
+            candidate.displayId != Display.DEFAULT_DISPLAY &&
+                candidate.modeOrNull()?.let { mode ->
+                    candidate.rotationOrNull()?.let { rotation ->
+                        DeviceProfile.isThorLowerDisplay(
+                            mode.physicalWidth,
+                            mode.physicalHeight,
+                            rotation,
+                        )
+                    }
+                } == true
+        }
 
     private fun scheduleDisplayRefresh() {
         if (!sessionLoaded || !activityResumed || isFinishing) return
