@@ -153,7 +153,7 @@ class MainActivity : ComponentActivity() {
         presentation.setOnDismissListener {
             if (secondaryPresentation === presentation) {
                 secondaryPresentation = null
-                hasThorLowerDisplay = false
+                hasThorLowerDisplay = findThorLowerDisplay() != null
                 scheduleSecondaryDisplayRetry()
             }
         }
@@ -161,15 +161,15 @@ class MainActivity : ComponentActivity() {
             presentation.show()
         } catch (_: WindowManager.BadTokenException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
-            hasThorLowerDisplay = false
+            hasThorLowerDisplay = findThorLowerDisplay() != null
             scheduleSecondaryDisplayRetry()
         } catch (_: WindowManager.InvalidDisplayException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
-            hasThorLowerDisplay = false
+            hasThorLowerDisplay = findThorLowerDisplay() != null
             scheduleSecondaryDisplayRetry()
         } catch (_: RuntimeException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
-            hasThorLowerDisplay = false
+            hasThorLowerDisplay = findThorLowerDisplay() != null
             scheduleSecondaryDisplayRetry()
         }
     }
