@@ -1,13 +1,15 @@
 package dev.adrian.thortools.utils
 
 import android.content.Context
+import dev.adrian.thortools.DeviceProfile
 import java.io.File
 
 object PatchUtils {
     private val slots = listOf("_a", "_b")
     private val partitions = listOf("init_boot", "boot")
 
-    fun backupBoot(context: Context): Boolean {
+    fun backupBoot(context: Context, expectedSlot: String): Boolean {
+        val slot = stableSlot(expectedSlot) ?: return false
         if (!RootUtils.hasPServer() || !FileUtils.isBackupDestinationWritable(context)) return false
         val initBootRequired = slots.any { RootUtils.hasPartition(context, "init_boot", it) }
         val bootRequired = slots.any { RootUtils.hasPartition(context, "boot", it) }
@@ -19,6 +21,7 @@ object PatchUtils {
         val initBootBackedUp = !initBootRequired || RootUtils.runRootScript(context, "init_boot.backup.sh") == "0"
         val bootBackedUp = !bootRequired || RootUtils.runRootScript(context, "boot.backup.sh") == "0"
         if (!initBootBackedUp || !bootBackedUp) return false
+        if (stableSlot(slot) == null) return false
         if (!RecoveryManifestStore.recordLocalImages(context, localImageInputs(context, patched = false))) return false
         return hasCompleteSlotCoverage(requiredSlots, stockBackupSlots(context))
     }
@@ -125,8 +128,8 @@ object PatchUtils {
         return success
     }
 
-    fun flashBoot(context: Context): Boolean {
-        val slot = validSlot() ?: return false
+    fun flashBoot(context: Context, expectedSlot: String): Boolean {
+        val slot = stableSlot(expectedSlot) ?: return false
         val partition = preferredPartition(context, slot) ?: return false
         val buildIdentity = currentBuildIdentity()
         if (!RecoveryManifestStore.hasVerifiedPatchedImage(
@@ -141,9 +144,9 @@ object PatchUtils {
         return RootUtils.runRootScript(context, "$partition.flash.sh", listOf(slot)) == "0"
     }
 
-    fun patchBoot(context: Context): String {
+    fun patchBoot(context: Context, expectedSlot: String): String {
         val magiskPath = MagiskUtil.getMagiskPath(context)
-        val slot = validSlot() ?: return ""
+        val slot = stableSlot(expectedSlot) ?: return ""
         val partition = preferredPartition(context, slot) ?: return ""
         val buildIdentity = currentBuildIdentity()
         if (magiskPath.isBlank()) return ""
@@ -157,14 +160,15 @@ object PatchUtils {
         ) ?: return ""
         val output = patchedPath(context, partition, slot)
         if (patchPartition(context, partition, output, magiskPath, slot) &&
+            stableSlot(slot) != null &&
             recordPatchedImage(context, partition, slot, output, buildIdentity, sourceHash)
         ) return output
         FileUtils.deleteFile(output)
         return ""
     }
 
-    fun restoreBoot(context: Context): Boolean {
-        val slot = validSlot() ?: return false
+    fun restoreBoot(context: Context, expectedSlot: String): Boolean {
+        val slot = stableSlot(expectedSlot) ?: return false
         val partition = preferredPartition(context, slot) ?: return false
         val buildIdentity = currentBuildIdentity()
         val source = RecoveryManifestStore.verifiedStockSource(
@@ -236,6 +240,15 @@ object PatchUtils {
     private fun currentBuildIdentity(): String = SystemUtils.getDeviceProperties().buildIdentity
 
     private fun validSlot(): String? = SystemUtils.getPropSlot().takeIf { it == "_a" || it == "_b" }
+
+    internal fun normalizeStableSlot(expectedSlot: String, actualSlot: String): String? {
+        val normalizedExpected = DeviceProfile.normalizeSlot(expectedSlot)
+        val normalizedActual = DeviceProfile.normalizeSlot(actualSlot)
+        return normalizedExpected.takeIf { it.isNotBlank() && it == normalizedActual }
+    }
+
+    private fun stableSlot(expectedSlot: String): String? =
+        normalizeStableSlot(expectedSlot, SystemUtils.getPropSlot())
 
     private fun preferredPartition(context: Context, slot: String): String? = selectPartition(
         initBootAvailable = RootUtils.hasPartition(context, "init_boot", slot),

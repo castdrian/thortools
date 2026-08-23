@@ -23,4 +23,12 @@ class PatchUtilsTest {
         assertEquals("boot", PatchUtils.selectPartition(initBootAvailable = false, bootAvailable = true))
         assertNull(PatchUtils.selectPartition(initBootAvailable = false, bootAvailable = false))
     }
+
+    @Test
+    fun acceptsOnlyAStableNormalizedSlot() {
+        assertEquals("_a", PatchUtils.normalizeStableSlot("a", "_a"))
+        assertEquals("_b", PatchUtils.normalizeStableSlot("_b", "b"))
+        assertNull(PatchUtils.normalizeStableSlot("_a", "_b"))
+        assertNull(PatchUtils.normalizeStableSlot("unknown", "_a"))
+    }
 }

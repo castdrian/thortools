@@ -9,6 +9,7 @@ import android.hardware.display.DisplayManager
 import androidx.lifecycle.Lifecycle
 import dev.adrian.thortools.utils.RecoveryImageInput
 import dev.adrian.thortools.utils.RecoveryManifestStore
+import dev.adrian.thortools.utils.FileUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -187,6 +188,43 @@ class ThorToolsInstrumentedTest {
             preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
             image.delete()
             patched.delete()
+        }
+    }
+
+    @Test
+    fun recoveryManifestStatusLabelsTheCurrentVerifiedCopy() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val image = File(context.getExternalFilesDir(null), "recovery-status-test.img")
+        preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+        try {
+            image.writeText("stock")
+            assertTrue(
+                RecoveryManifestStore.recordLocalImages(
+                    context,
+                    listOf(
+                        RecoveryImageInput(
+                            fileName = image.name,
+                            slot = "_a",
+                            partition = "boot",
+                            patched = false,
+                            path = image.path,
+                            buildIdentity = "current-fingerprint",
+                        ),
+                    ),
+                ),
+            )
+            var status = RecoveryManifestStore.statuses(context, "current-fingerprint").single()
+            assertTrue(status.currentBuild)
+            assertTrue(status.localCopyVerified)
+            assertEquals(image.path, status.localPath)
+            assertEquals(FileUtils.getPathDownload("/${image.name}"), status.downloadPath)
+            image.writeText("tampered")
+            status = RecoveryManifestStore.statuses(context, "current-fingerprint").single()
+            assertFalse(status.localCopyVerified)
+        } finally {
+            preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+            image.delete()
         }
     }
 

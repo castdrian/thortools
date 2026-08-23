@@ -47,7 +47,8 @@ import dev.adrian.thortools.ThorRecoveryGuidance
 import dev.adrian.thortools.ThorSession
 import dev.adrian.thortools.ThorSnapshot
 import dev.adrian.thortools.ThorVariant
-import dev.adrian.thortools.utils.PatchUtils
+import dev.adrian.thortools.utils.RecoveryImageStatus
+import dev.adrian.thortools.utils.RecoveryManifestStore
 import dev.adrian.thortools.utils.getLogFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -281,17 +282,41 @@ private fun DashboardRecoveryGuidance(snapshot: ThorSnapshot) {
 
 @Composable
 private fun DashboardHashes(context: Context, snapshot: ThorSnapshot) {
-    val hashes by produceState<Map<String, String>>(emptyMap(), snapshot.stockBackupSlots, snapshot.patchedBackupSlots, snapshot.operation.status == OperationStatus.RUNNING) {
-        value = withContext(Dispatchers.IO) { PatchUtils.imageHashes(context) }
+    val statuses by produceState<List<RecoveryImageStatus>>(
+        emptyList(),
+        snapshot.stockBackupSlots,
+        snapshot.patchedBackupSlots,
+        snapshot.profile.properties.buildIdentity,
+        snapshot.operation.status == OperationStatus.RUNNING,
+    ) {
+        value = withContext(Dispatchers.IO) {
+            RecoveryManifestStore.statuses(context, snapshot.profile.properties.buildIdentity)
+        }
     }
-    val paths = remember(snapshot.stockBackupSlots, snapshot.patchedBackupSlots) { PatchUtils.imagePaths(context) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Image hashes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            hashes.toSortedMap().forEach { (name, hash) ->
-                Text(name, fontWeight = FontWeight.Bold)
-                Text(hash, style = MaterialTheme.typography.bodySmall)
-                Text(paths[name] ?: "Unavailable", style = MaterialTheme.typography.bodySmall)
+            Text("Recorded image hashes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (statuses.isEmpty()) {
+                Text("No recovery manifest records are available.")
+            }
+            statuses.sortedWith(compareBy({ it.record.patched }, { it.record.partition }, { it.record.slot })).forEach { status ->
+                val record = status.record
+                Text(
+                    "${record.partition}${record.slot} ${if (record.patched) "patched" else "stock"}",
+                    fontWeight = FontWeight.Bold,
+                )
+                Text("SHA-256: ${record.sha256}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    when {
+                        !status.currentBuild -> "Status: recorded for another build"
+                        !status.localCopyVerified -> "Status: app copy missing or modified"
+                        else -> "Status: verified for the current build"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (status.currentBuild && status.localCopyVerified) Color(0xff2e7d32) else MaterialTheme.colorScheme.error,
+                )
+                Text("App path: ${status.localPath}", style = MaterialTheme.typography.bodySmall)
+                Text("Download path: ${status.downloadPath}", style = MaterialTheme.typography.bodySmall)
             }
         }
     }

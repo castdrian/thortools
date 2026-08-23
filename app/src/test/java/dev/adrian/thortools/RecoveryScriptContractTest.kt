@@ -60,6 +60,11 @@ class RecoveryScriptContractTest {
     @Test
     fun patchUtilsPassesValidatedSlotsToMutatingScripts() {
         val patchUtilsSource = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
+        assertTrue(patchUtilsSource.contains("fun backupBoot(context: Context, expectedSlot: String)"))
+        assertTrue(patchUtilsSource.contains("fun patchBoot(context: Context, expectedSlot: String)"))
+        assertTrue(patchUtilsSource.contains("fun flashBoot(context: Context, expectedSlot: String)"))
+        assertTrue(patchUtilsSource.contains("fun restoreBoot(context: Context, expectedSlot: String)"))
+        assertTrue(patchUtilsSource.contains("stableSlot(expectedSlot)"))
         assertTrue(patchUtilsSource.contains("\"\$partition.flash.sh\", listOf(slot)"))
         assertTrue(patchUtilsSource.contains("\"\$partition.patch.sh\", listOf(magiskPath, slot)"))
         assertTrue(patchUtilsSource.contains("\"\$partition.restore.sh\", listOf(source, slot)"))
