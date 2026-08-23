@@ -22,6 +22,8 @@ normalize_slot() {
 
 require_active_slot() {
     EXPECTED_SLOT="$(normalize_slot "$1")" || return 1
-    ACTIVE_SLOT="$(normalize_slot "$(getprop ro.boot.slot_suffix)")" || return 1
+    ACTIVE_PROPERTY="$(getprop ro.boot.slot_suffix)"
+    [ -n "$ACTIVE_PROPERTY" ] || ACTIVE_PROPERTY="$(getprop ro.boot.slot)"
+    ACTIVE_SLOT="$(normalize_slot "$ACTIVE_PROPERTY")" || return 1
     [ "$ACTIVE_SLOT" = "$EXPECTED_SLOT" ]
 }

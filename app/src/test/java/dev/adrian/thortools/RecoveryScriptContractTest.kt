@@ -53,6 +53,8 @@ class RecoveryScriptContractTest {
         assertTrue(partitionSource.contains("normalize_slot"))
         assertTrue(partitionSource.contains("EXPECTED_SLOT"))
         assertTrue(partitionSource.contains("ACTIVE_SLOT"))
+        assertTrue(partitionSource.contains("getprop ro.boot.slot_suffix"))
+        assertTrue(partitionSource.contains("getprop ro.boot.slot"))
     }
 
     @Test
