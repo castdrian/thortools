@@ -366,10 +366,16 @@ private fun DashboardHashes(context: Context, snapshot: ThorSnapshot) {
                     when {
                         !status.currentBuild -> "Status: recorded for another build"
                         !status.localCopyVerified -> "Status: app copy missing or modified"
-                        else -> "Status: verified for the current build"
+                        !record.patched && !status.downloadCopyVerified -> "Status: Download stock copy missing or modified"
+                        record.patched && !status.downloadCopyVerified -> "Status: app copy verified; Download patch copy optional"
+                        else -> "Status: app and Download copies verified for the current build"
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (status.currentBuild && status.localCopyVerified) Color(0xff2e7d32) else MaterialTheme.colorScheme.error,
+                    color = if (
+                        status.currentBuild &&
+                        status.localCopyVerified &&
+                        (record.patched || status.downloadCopyVerified)
+                    ) Color(0xff2e7d32) else MaterialTheme.colorScheme.error,
                 )
                 Text("App path: ${status.localPath}", style = MaterialTheme.typography.bodySmall)
                 Text("Download path: ${status.downloadPath}", style = MaterialTheme.typography.bodySmall)

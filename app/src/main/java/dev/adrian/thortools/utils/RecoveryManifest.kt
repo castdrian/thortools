@@ -48,6 +48,7 @@ data class RecoveryImageStatus(
     val localPath: String,
     val downloadPath: String,
     val localCopyVerified: Boolean,
+    val downloadCopyVerified: Boolean,
     val currentBuild: Boolean,
 )
 
@@ -128,9 +129,9 @@ object RecoveryManifestStore {
     ): VerifiedRecoverySource? {
         val record = find(context, slot, partition, patched = false) ?: return null
         if (!record.matches(slot, partition, expectedPatched = false, buildIdentity)) return null
-        if (verifyLocal(record, localPath)) return VerifiedRecoverySource(localPath, record.sha256)
-        return RootUtils.sha256FileRoot(context, downloadPath)
-            ?.takeIf { it == record.sha256 }
+        if (verifyPath(context, record, localPath)) return VerifiedRecoverySource(localPath, record.sha256)
+        return verifyPath(context, record, downloadPath)
+            .takeIf { it }
             ?.let { VerifiedRecoverySource(downloadPath, record.sha256) }
     }
 
@@ -208,7 +209,8 @@ object RecoveryManifestStore {
             record = record,
             localPath = localPath,
             downloadPath = FileUtils.getPathDownload("/$fileName"),
-            localCopyVerified = verifyLocal(record, localPath),
+            localCopyVerified = verifyPath(context, record, localPath),
+            downloadCopyVerified = verifyPath(context, record, FileUtils.getPathDownload("/$fileName")),
             currentBuild = record.buildIdentity == buildIdentity,
         )
     }
@@ -222,6 +224,9 @@ object RecoveryManifestStore {
         val file = File(path)
         return file.isFile && file.length() == record.size && hashFile(path) == record.sha256
     }
+
+    private fun verifyPath(context: Context, record: RecoveryImageRecord, path: String): Boolean =
+        verifyLocal(record, path) || RootUtils.sha256FileRoot(context, path) == record.sha256
 
     private fun read(context: Context): List<RecoveryImageRecord> =
         AppSettings.getSharedPrefs(context)
