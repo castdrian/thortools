@@ -51,6 +51,11 @@ data class RecoveryImageStatus(
     val currentBuild: Boolean,
 )
 
+data class VerifiedRecoverySource(
+    val path: String,
+    val sha256: String,
+)
+
 @Serializable
 private data class RecoveryManifestData(
     val records: List<RecoveryImageRecord> = emptyList(),
@@ -104,13 +109,29 @@ object RecoveryManifestStore {
         localPath: String,
         downloadPath: String,
         buildIdentity: String,
-    ): String? {
+    ): String? = verifiedStockSourceInfo(
+        context,
+        slot,
+        partition,
+        localPath,
+        downloadPath,
+        buildIdentity,
+    )?.path
+
+    fun verifiedStockSourceInfo(
+        context: Context,
+        slot: String,
+        partition: String,
+        localPath: String,
+        downloadPath: String,
+        buildIdentity: String,
+    ): VerifiedRecoverySource? {
         val record = find(context, slot, partition, patched = false) ?: return null
         if (!record.matches(slot, partition, expectedPatched = false, buildIdentity)) return null
-        if (verifyLocal(record, localPath)) return localPath
+        if (verifyLocal(record, localPath)) return VerifiedRecoverySource(localPath, record.sha256)
         return RootUtils.sha256FileRoot(context, downloadPath)
             ?.takeIf { it == record.sha256 }
-            ?.let { downloadPath }
+            ?.let { VerifiedRecoverySource(downloadPath, record.sha256) }
     }
 
     fun verifiedStockHash(
@@ -148,18 +169,34 @@ object RecoveryManifestStore {
         localPath: String,
         stockPath: String,
         buildIdentity: String,
-    ): Boolean {
-        val patched = find(context, slot, partition, patched = true) ?: return false
+    ): Boolean = verifiedPatchedHash(
+        context,
+        slot,
+        partition,
+        localPath,
+        stockPath,
+        buildIdentity,
+    ) != null
+
+    fun verifiedPatchedHash(
+        context: Context,
+        slot: String,
+        partition: String,
+        localPath: String,
+        stockPath: String,
+        buildIdentity: String,
+    ): String? {
+        val patched = find(context, slot, partition, patched = true) ?: return null
         val stockHash = verifiedStockHash(
             context,
             slot,
             partition,
             stockPath,
             buildIdentity,
-        ) ?: return false
-        return patched.matches(slot, partition, expectedPatched = true, buildIdentity) &&
-            patched.sourceSha256 == stockHash &&
-            verifyLocal(patched, localPath)
+        ) ?: return null
+        if (!patched.matches(slot, partition, expectedPatched = true, buildIdentity)) return null
+        if (patched.sourceSha256 != stockHash) return null
+        return patched.sha256.takeIf { verifyLocal(patched, localPath) }
     }
 
     fun records(context: Context): List<RecoveryImageRecord> = read(context)
