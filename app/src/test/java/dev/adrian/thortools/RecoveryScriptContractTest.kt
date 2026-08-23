@@ -14,7 +14,7 @@ class RecoveryScriptContractTest {
             assertTrue(source.contains("expected=\$((expected + 1))"))
             assertTrue(source.contains("copied=\$((copied + 1))"))
             assertTrue(source.contains("DOWNLOAD_FILE="))
-            assertTrue(source.contains("[ -s \"\$DOWNLOAD_FILE\" ]"))
+            assertTrue(source.contains("verify_copy_hash \"\$OUTPUT_FILE\" \"\$DOWNLOAD_FILE\""))
             assertTrue(source.contains("[ \"\$expected\" -gt 0 ] && [ \"\$copied\" -eq \"\$expected\" ] && [ \"\$failed\" -eq 0 ]"))
         }
     }
@@ -67,6 +67,7 @@ class RecoveryScriptContractTest {
         }
         val partitionSource = script("partition_path.sh")
         assertTrue(partitionSource.contains("sha256sum"))
+        assertTrue(partitionSource.contains("verify_copy_hash"))
         assertTrue(partitionSource.contains("blockdev --getsize64"))
         assertTrue(partitionSource.contains("/sys/class/block/\$DEVICE_NAME/size"))
     }
