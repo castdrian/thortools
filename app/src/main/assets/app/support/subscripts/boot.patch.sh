@@ -32,7 +32,11 @@ echo "Cleaning temp files"
 rm -f "$MAGISK_NEWBOOT" >> $LOG_FILE
 
 echo "Patching $BOOT_IMG using $MAGISK_PATCH..." >> $LOG_FILE
-KEEPVERITY=true KEEPFORCEENCRYPT=true sh "$MAGISK_PATCH" "$BOOT_IMG" >> $LOG_FILE
+if ! KEEPVERITY=true KEEPFORCEENCRYPT=true sh "$MAGISK_PATCH" "$BOOT_IMG" >> "$LOG_FILE" 2>&1; then
+    echo "Magisk patch command failed" >> "$LOG_FILE"
+    rm -f "$MAGISK_NEWBOOT"
+    exit 1
+fi
 
 if ! verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256"; then
     echo "Stock boot image changed during patch" >> "$LOG_FILE"

@@ -43,6 +43,15 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun patchScriptsRejectAMagiskFailureEvenIfOutputRemains() {
+        listOf("boot.patch.sh", "init_boot.patch.sh").forEach { name ->
+            val source = script(name)
+            assertTrue(source.contains("if ! KEEPVERITY=true KEEPFORCEENCRYPT=true sh \"\$MAGISK_PATCH\" \"\$BOOT_IMG\""))
+            assertTrue(source.contains("Magisk patch command failed"))
+        }
+    }
+
+    @Test
     fun restoreScriptsAcceptAnExplicitVerifiedSource() {
         assertTrue(script("boot.restore.sh").contains("THORTOOLS_LOG_PATH"))
         assertTrue(script("init_boot.restore.sh").contains("THORTOOLS_LOG_PATH"))
