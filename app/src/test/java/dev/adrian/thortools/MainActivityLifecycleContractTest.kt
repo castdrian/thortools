@@ -52,6 +52,7 @@ class MainActivityLifecycleContractTest {
         assertTrue(resume.contains("if (sessionLoaded)"))
         assertTrue(resume.contains("session.refresh()"))
         assertTrue(pause.contains("activityResumed = false"))
+        assertTrue(pause.contains("dismissSecondaryDisplay()"))
         assertTrue(source.contains("!activityResumed || isFinishing"))
 
         val presentation = source.substringAfter("private class ThorPresentation").substringBefore("private fun configureThorWindow")

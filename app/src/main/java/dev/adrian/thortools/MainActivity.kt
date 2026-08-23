@@ -99,6 +99,7 @@ class MainActivity : ComponentActivity() {
         secondaryDisplayRetry = null
         displayRefreshJob?.cancel()
         displayRefreshJob = null
+        dismissSecondaryDisplay()
         super.onPause()
     }
 
