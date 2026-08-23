@@ -26,7 +26,7 @@ for ACTIVE_SLOT in _a _b; do
             [ -s "$TEMP_FILE" ] &&
             mv -f "$TEMP_FILE" "$OUTPUT_FILE"; then
             DOWNLOAD_FILE="$DOWNLOAD_PATH/init_boot$ACTIVE_SLOT.img"
-            if cp -f "$OUTPUT_FILE" "$DOWNLOAD_FILE" >> "$LOG_FILE" 2>&1 && [ -s "$DOWNLOAD_FILE" ]; then
+            if cp -f "$OUTPUT_FILE" "$DOWNLOAD_FILE" >> "$LOG_FILE" 2>&1 && verify_copy_hash "$OUTPUT_FILE" "$DOWNLOAD_FILE"; then
                 copied=$((copied + 1))
             else
                 failed=1

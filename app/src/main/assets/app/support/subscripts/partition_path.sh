@@ -38,6 +38,14 @@ verify_image_hash() {
     [ "$ACTUAL_HASH" = "$(printf '%s' "$EXPECTED_HASH" | tr '[:upper:]' '[:lower:]')" ]
 }
 
+verify_copy_hash() {
+    SOURCE_PATH="$1"
+    DESTINATION_PATH="$2"
+    [ -s "$SOURCE_PATH" ] && [ -s "$DESTINATION_PATH" ] || return 1
+    SOURCE_HASH="$(sha256sum "$SOURCE_PATH" 2>/dev/null | sed 's/[[:space:]].*$//' | tr '[:upper:]' '[:lower:]')"
+    verify_image_hash "$DESTINATION_PATH" "$SOURCE_HASH"
+}
+
 image_fits_partition() {
     IMAGE_PATH="$1"
     DEVICE_PATH="$2"
