@@ -31,6 +31,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -397,10 +398,25 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
     val snapshot = session.snapshot
     var dpi by remember(snapshot.lcdDensity) { mutableStateOf(snapshot.lcdDensity.toFloat().coerceIn(AppSettings.DPI_MIN.toFloat(), AppSettings.DPI_MAX.toFloat())) }
     var volumeSteps by remember(snapshot.volumeSteps) { mutableStateOf(snapshot.volumeSteps.toFloat().coerceIn(AppSettings.VOLUME_STEPS_MIN.toFloat(), AppSettings.VOLUME_STEPS_MAX.toFloat())) }
+    var pendingTweak by remember { mutableStateOf<ThorOperation?>(null) }
     val skipBootAnimation = AppSettings.getSkipBootAnimation(prefs)
     val enabled = snapshot.profile.isThor && snapshot.rootServiceAvailable
     val actionReady = snapshot.operation.status !in setOf(OperationStatus.RUNNING, OperationStatus.INTERRUPTED)
     val moduleReady = actionReady && ThorOperationGuard.validate(snapshot, ThorOperation.SET_VOLUME_STEPS) == null
+
+    LaunchedEffect(
+        pendingTweak,
+        snapshot.operation.status,
+        snapshot.operation.message,
+        snapshot.lcdDensity,
+        snapshot.volumeSteps,
+    ) {
+        if (pendingTweak != null && snapshot.operation.status != OperationStatus.RUNNING) {
+            dpi = snapshot.lcdDensity.toFloat().coerceIn(AppSettings.DPI_MIN.toFloat(), AppSettings.DPI_MAX.toFloat())
+            volumeSteps = snapshot.volumeSteps.toFloat().coerceIn(AppSettings.VOLUME_STEPS_MIN.toFloat(), AppSettings.VOLUME_STEPS_MAX.toFloat())
+            pendingTweak = null
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -417,7 +433,10 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                     valueRange = AppSettings.DPI_MIN.toFloat()..AppSettings.DPI_MAX.toFloat(),
                     steps = AppSettings.DPI_MAX - AppSettings.DPI_MIN - 1,
                     enabled = enabled && actionReady,
-                    onValueChangeFinished = { session.run(operationScope, ThorOperation.SET_DPI, dpi.toInt().toString()) },
+                    onValueChangeFinished = {
+                        pendingTweak = ThorOperation.SET_DPI
+                        session.run(operationScope, ThorOperation.SET_DPI, dpi.toInt().toString())
+                    },
                 )
                 Text("Default: ${AppSettings.getPropLcdDensity(prefs)}")
             }
@@ -448,7 +467,10 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                         valueRange = AppSettings.VOLUME_STEPS_MIN.toFloat()..AppSettings.VOLUME_STEPS_MAX.toFloat(),
                         steps = AppSettings.VOLUME_STEPS_MAX - AppSettings.VOLUME_STEPS_MIN - 1,
                         enabled = enabled && actionReady,
-                        onValueChangeFinished = { session.run(operationScope, ThorOperation.SET_VOLUME_STEPS, volumeSteps.toInt().toString()) },
+                        onValueChangeFinished = {
+                            pendingTweak = ThorOperation.SET_VOLUME_STEPS
+                            session.run(operationScope, ThorOperation.SET_VOLUME_STEPS, volumeSteps.toInt().toString())
+                        },
                     )
                 }
             }
