@@ -18,5 +18,11 @@ class MainActivityLifecycleContractTest {
         assertTrue(resume.contains("activityResumed = true"))
         assertTrue(pause.contains("activityResumed = false"))
         assertTrue(source.contains("if (!activityResumed || isFinishing) return"))
+
+        val presentation = source.substringAfter("private class ThorPresentation").substringBefore("private fun configureThorWindow")
+        assertTrue(presentation.contains("setCancelable(false)"))
+        assertTrue(presentation.contains("setContentView(composeView)"))
+        assertTrue(presentation.contains("configureThorWindow(window)"))
+        assertTrue(presentation.contains("contentView?.requestFocusFromTouch()"))
     }
 }
