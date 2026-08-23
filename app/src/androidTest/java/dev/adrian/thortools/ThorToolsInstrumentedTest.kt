@@ -118,6 +118,27 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun debugBackendPersistsDisplayTweaksAcrossSnapshots() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val backend = SystemBackendFactory.create(context)
+        val original = backend.snapshot()
+        try {
+            assertTrue(backend.perform(ThorOperation.SET_DPI, "333").success)
+            assertEquals(333, backend.snapshot().lcdDensity)
+            assertTrue(backend.perform(ThorOperation.SET_ANIMATION, "0.5").success)
+            assertEquals(0.5f, backend.snapshot().animationSpeed)
+            val recreatedBackend = SystemBackendFactory.create(context)
+            assertEquals(333, recreatedBackend.snapshot().lcdDensity)
+            assertEquals(0.5f, recreatedBackend.snapshot().animationSpeed)
+            assertFalse(backend.perform(ThorOperation.SET_DPI, "289").success)
+            assertFalse(backend.perform(ThorOperation.SET_ANIMATION, "1.1").success)
+        } finally {
+            backend.perform(ThorOperation.SET_DPI, original.lcdDensity.toString())
+            backend.perform(ThorOperation.SET_ANIMATION, original.animationSpeed.toString())
+        }
+    }
+
+    @Test
     fun clearingPatchedCacheKeepsStockBackups() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val backend = SystemBackendFactory.create(context)

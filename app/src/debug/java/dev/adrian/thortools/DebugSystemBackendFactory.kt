@@ -11,6 +11,7 @@ object DebugSystemBackendFactory {
 }
 
 private class FakeSystemBackend(private val context: Context) : SystemBackend {
+    private val preferences = AppSettings.getSharedPrefs(context)
     private var state = ThorSnapshot(
         profile = DeviceProfile.detect(
             DeviceProperties(
@@ -39,9 +40,9 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
             ),
         ),
         batteryPercent = 88,
-        lcdDensity = 320,
-        volumeSteps = 20,
-        animationSpeed = 1f,
+        lcdDensity = AppSettings.getDpi(preferences, 320),
+        volumeSteps = AppSettings.getVolumeSteps(preferences, 20),
+        animationSpeed = AppSettings.getAnimationSpeed(preferences, 1f),
         activeSlot = "_a",
         kernelVersion = "ThorTools deterministic emulator backend",
         rootServiceAvailable = true,
@@ -130,10 +131,45 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                     patchedBackupSlots = emptySet(),
                 )
             }
-            ThorOperation.SET_DPI -> state = state.copy(lcdDensity = argument?.toIntOrNull() ?: state.lcdDensity)
-            ThorOperation.SET_ANIMATION -> state = state.copy(animationSpeed = argument?.toFloatOrNull() ?: state.animationSpeed)
-            ThorOperation.SET_VOLUME_STEPS,
-            ThorOperation.SET_BOOT_ANIMATION,
+            ThorOperation.SET_DPI -> {
+                val value = argument?.toIntOrNull()
+                    ?: return OperationResult(false, "Invalid DPI")
+                if (value !in AppSettings.DPI_MIN..AppSettings.DPI_MAX) {
+                    return OperationResult(false, "DPI must be between ${AppSettings.DPI_MIN} and ${AppSettings.DPI_MAX}")
+                }
+                AppSettings.setDpi(preferences, value)
+                state = state.copy(lcdDensity = AppSettings.getDpi(preferences, value))
+            }
+            ThorOperation.SET_ANIMATION -> {
+                val value = argument?.toFloatOrNull()
+                    ?: return OperationResult(false, "Invalid animation speed")
+                if (!value.isFinite() || value !in 0f..1f) {
+                    return OperationResult(false, "Animation speed must be between 0x and 1x")
+                }
+                AppSettings.setAnimationSpeed(preferences, value)
+                state = state.copy(animationSpeed = AppSettings.getAnimationSpeed(preferences, value))
+            }
+            ThorOperation.SET_VOLUME_STEPS -> {
+                val value = argument?.toIntOrNull()
+                    ?: return OperationResult(false, "Invalid volume step count")
+                if (value !in AppSettings.VOLUME_STEPS_MIN..AppSettings.VOLUME_STEPS_MAX) {
+                    return OperationResult(false, "Volume steps must be between ${AppSettings.VOLUME_STEPS_MIN} and ${AppSettings.VOLUME_STEPS_MAX}")
+                }
+                if (!AppSettings.setVolumeSteps(preferences, value)) {
+                    return OperationResult(false, "Could not save the volume-step setting")
+                }
+                state = state.copy(volumeSteps = AppSettings.getVolumeSteps(preferences, value))
+            }
+            ThorOperation.SET_BOOT_ANIMATION -> {
+                val value = when (argument) {
+                    "true" -> true
+                    "false" -> false
+                    else -> return OperationResult(false, "Invalid boot-animation setting")
+                }
+                if (!AppSettings.setSkipBootAnimation(preferences, value)) {
+                    return OperationResult(false, "Could not save the boot-animation setting")
+                }
+            }
             ThorOperation.INSTALL_MAGISK,
             ThorOperation.REBOOT,
             ThorOperation.REFRESH,
@@ -180,6 +216,9 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         val stockSlots = persistedSlots(patched = false)
         val patchedSlots = persistedSlots(patched = true)
         return state.copy(
+            lcdDensity = AppSettings.getDpi(preferences, 320),
+            volumeSteps = AppSettings.getVolumeSteps(preferences, 20),
+            animationSpeed = AppSettings.getAnimationSpeed(preferences, 1f),
             backupAvailable = state.activeSlot in stockSlots,
             stockRestoreAvailable = state.activeSlot in stockSlots,
             patchedBackupAvailable = state.activeSlot in patchedSlots,
