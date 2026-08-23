@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
     private var displayManager: DisplayManager? = null
     private var secondaryPresentation: ThorPresentation? = null
     private var secondaryDisplayRetry: Job? = null
+    private var displayRefreshJob: Job? = null
     private var secondaryDisplayRetryCount = 0
     private var secondaryPresentationRequested = false
     private var activityResumed = false
@@ -38,10 +39,12 @@ class MainActivity : ComponentActivity() {
 
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) {
+            scheduleDisplayRefresh()
             requestSecondaryDisplay()
         }
 
         override fun onDisplayRemoved(displayId: Int) {
+            scheduleDisplayRefresh()
             if (secondaryPresentation?.display?.displayId == displayId) {
                 dismissSecondaryDisplay()
                 scheduleSecondaryDisplayRetry()
@@ -49,6 +52,7 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun onDisplayChanged(displayId: Int) {
+            scheduleDisplayRefresh()
             requestSecondaryDisplay()
         }
     }
@@ -92,6 +96,8 @@ class MainActivity : ComponentActivity() {
         activityResumed = false
         secondaryDisplayRetry?.cancel()
         secondaryDisplayRetry = null
+        displayRefreshJob?.cancel()
+        displayRefreshJob = null
         super.onPause()
     }
 
@@ -109,6 +115,8 @@ class MainActivity : ComponentActivity() {
         activityResumed = false
         secondaryDisplayRetry?.cancel()
         secondaryDisplayRetry = null
+        displayRefreshJob?.cancel()
+        displayRefreshJob = null
         secondaryDisplayRetryCount = 0
         dismissSecondaryDisplay(clearRequest = true)
         displayManager?.unregisterDisplayListener(displayListener)
@@ -130,11 +138,13 @@ class MainActivity : ComponentActivity() {
             .firstOrNull { candidate ->
             candidate.displayId != Display.DEFAULT_DISPLAY &&
                 candidate.modeOrNull()?.let { mode ->
-                    DeviceProfile.isThorLowerDisplay(
-                        mode.physicalWidth,
-                        mode.physicalHeight,
-                        candidate.rotation,
-                    )
+                    candidate.rotationOrNull()?.let { rotation ->
+                        DeviceProfile.isThorLowerDisplay(
+                            mode.physicalWidth,
+                            mode.physicalHeight,
+                            rotation,
+                        )
+                    }
                 } == true
             }
         if (display == null) {
@@ -176,6 +186,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun scheduleDisplayRefresh() {
+        if (!sessionLoaded || !activityResumed || isFinishing) return
+        displayRefreshJob?.cancel()
+        displayRefreshJob = lifecycleScope.launch {
+            delay(250L)
+            displayRefreshJob = null
+            if (activityResumed && !isFinishing) session.refresh()
+        }
+    }
+
     private fun scheduleSecondaryDisplayRetry() {
         if (!secondaryPresentationRequested || !activityResumed || isFinishing || secondaryDisplayRetry?.isActive == true) return
         secondaryDisplayRetryCount = (secondaryDisplayRetryCount + 1).coerceAtMost(8)
@@ -200,6 +220,8 @@ class MainActivity : ComponentActivity() {
 }
 
 private fun Display.modeOrNull(): Display.Mode? = runCatching { mode }.getOrNull()
+
+private fun Display.rotationOrNull(): Int? = runCatching { rotation }.getOrNull()
 
 private class ThorPresentation(
     private val activity: ComponentActivity,
