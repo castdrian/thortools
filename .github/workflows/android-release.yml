@@ -124,7 +124,8 @@ jobs:
             build_type=alpha
             if [[ -n "$THORTOOLS_ALPHA_KEYSTORE_BASE64" && -n "$THORTOOLS_ALPHA_KEYSTORE_PASSWORD" && -n "$THORTOOLS_ALPHA_KEY_ALIAS" && -n "$THORTOOLS_ALPHA_KEY_PASSWORD" ]]; then
               keystore_path="$RUNNER_TEMP/thortools-alpha.jks"
-              printf '%s' "$THORTOOLS_ALPHA_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+              printf '%s' "$THORTOOLS_ALPHA_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$keystore_path"
+              test -s "$keystore_path"
               echo "THORTOOLS_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
               echo "THORTOOLS_KEYSTORE_PASSWORD=$THORTOOLS_ALPHA_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
               echo "THORTOOLS_KEY_ALIAS=$THORTOOLS_ALPHA_KEY_ALIAS" >> "$GITHUB_ENV"
