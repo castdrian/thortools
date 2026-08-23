@@ -485,16 +485,54 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             ThorOperation.SET_DPI -> {
                 val value = argument?.toIntOrNull() ?: return OperationResult(false, "Invalid DPI")
                 if (value !in AppSettings.DPI_MIN..AppSettings.DPI_MAX) return OperationResult(false, "DPI must be between ${AppSettings.DPI_MIN} and ${AppSettings.DPI_MAX}")
+                val prefs = AppSettings.getSharedPrefs(context)
+                val previous = current.lcdDensity.takeIf { it in AppSettings.DPI_MIN..AppSettings.DPI_MAX }
                 val changed = RootUtils.setDpi(context, value)
-                if (changed) AppSettings.setDpi(AppSettings.getSharedPrefs(context), value)
-                OperationResult(changed, if (changed) "DPI set to $value" else "The Thor DPI command failed")
+                if (!changed) {
+                    OperationResult(false, "The Thor DPI command failed")
+                } else if (AppSettings.setDpi(prefs, value)) {
+                    OperationResult(true, "DPI set to $value")
+                } else {
+                    val restored = previous == value || previous?.let { RootUtils.setDpi(context, it) } == true
+                    OperationResult(
+                        false,
+                        if (restored) {
+                            "DPI changed but could not be saved; previous density restored"
+                        } else {
+                            "DPI changed but could not be saved; verify the Thor density before reboot"
+                        },
+                    )
+                }
             }
             ThorOperation.SET_ANIMATION -> {
                 val value = argument?.toFloatOrNull() ?: return OperationResult(false, "Invalid animation speed")
                 if (!value.isFinite() || value !in 0f..1f) return OperationResult(false, "Animation speed must be between 0x and 1x")
+                val previous = current.animationSpeed.takeIf { it.isFinite() && it in 0f..1f } ?: AppSettings.ANIMATION_SPEED_DEFAULT
+                val prefs = AppSettings.getSharedPrefs(context)
                 val changed = RootUtils.setAnimationSpeed(context, value)
-                if (changed) AppSettings.setAnimationSpeed(AppSettings.getSharedPrefs(context), value)
-                OperationResult(changed, if (changed) "Animation speed set to ${value}x" else "The Thor animation command failed")
+                if (!changed) {
+                    val restored = RootUtils.setAnimationSpeed(context, previous)
+                    OperationResult(
+                        false,
+                        if (restored) {
+                            "The Thor animation command failed; previous speed restored"
+                        } else {
+                            "The Thor animation command failed; verify animation settings before reboot"
+                        },
+                    )
+                } else if (AppSettings.setAnimationSpeed(prefs, value)) {
+                    OperationResult(true, "Animation speed set to ${value}x")
+                } else {
+                    val restored = RootUtils.setAnimationSpeed(context, previous)
+                    OperationResult(
+                        false,
+                        if (restored) {
+                            "Animation speed changed but could not be saved; previous speed restored"
+                        } else {
+                            "Animation speed changed but could not be saved; verify animation settings before reboot"
+                        },
+                    )
+                }
             }
             ThorOperation.SET_VOLUME_STEPS -> {
                 val value = argument?.toIntOrNull() ?: return OperationResult(false, "Invalid volume step count")

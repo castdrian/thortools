@@ -99,16 +99,14 @@ object AppSettings {
     fun getAnimationSpeed(sharedPrefs: SharedPreferences, defaultValue: Float = ANIMATION_SPEED_DEFAULT): Float =
         sharedPrefs.getFloat(ANIMATIONS_SPEED_KEY, defaultValue)
 
-    fun setAnimationSpeed(sharedPrefs: SharedPreferences, value: Float) {
+    fun setAnimationSpeed(sharedPrefs: SharedPreferences, value: Float): Boolean =
         sharedPrefs.edit().putFloat(ANIMATIONS_SPEED_KEY, value.coerceIn(0f, 1f)).commit()
-    }
 
     fun getDpi(sharedPrefs: SharedPreferences, defaultValue: Int? = null): Int =
         sharedPrefs.getInt(DPI_KEY, defaultValue ?: getPropLcdDensity(sharedPrefs))
 
-    fun setDpi(sharedPrefs: SharedPreferences, value: Int) {
+    fun setDpi(sharedPrefs: SharedPreferences, value: Int): Boolean =
         sharedPrefs.edit().putInt(DPI_KEY, value.coerceIn(DPI_MIN, DPI_MAX)).commit()
-    }
 
     fun getVolumeSteps(sharedPrefs: SharedPreferences, defaultValue: Int = VOLUME_STEPS_DEFAULT): Int =
         sharedPrefs.getInt(VOLUME_STEPS_KEY, defaultValue)

@@ -149,6 +149,19 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun systemTweaksFailClosedWhenPersistenceFails() {
+        val settings = File("src/main/java/dev/adrian/thortools/AppSettings.kt").readText()
+        val backend = File("src/main/java/dev/adrian/thortools/SystemBackend.kt").readText()
+        assertTrue(settings.contains("fun setAnimationSpeed(sharedPrefs: SharedPreferences, value: Float): Boolean"))
+        assertTrue(settings.contains("fun setDpi(sharedPrefs: SharedPreferences, value: Int): Boolean"))
+        assertTrue(backend.contains("else if (AppSettings.setDpi(prefs, value))"))
+        assertTrue(backend.contains("previous density restored"))
+        assertTrue(backend.contains("val previous = current.animationSpeed"))
+        assertTrue(backend.contains("val restored = RootUtils.setAnimationSpeed(context, previous)"))
+        assertTrue(backend.contains("previous speed restored"))
+    }
+
+    @Test
     fun patchUtilsPassesValidatedSlotsToMutatingScripts() {
         val patchUtilsSource = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
         assertTrue(patchUtilsSource.contains("fun backupBoot(context: Context, expectedSlot: String)"))
