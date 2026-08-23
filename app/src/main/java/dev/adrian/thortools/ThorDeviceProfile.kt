@@ -70,6 +70,7 @@ object DeviceProfile {
     const val UPPER_DIAGONAL_MILLIMETRES = 152.4f
     const val LOWER_DIAGONAL_MILLIMETRES = 99.6f
     const val LOWER_MINIMUM_TEXT_SP = 18f
+    const val THOR_DISPLAY_ROTATION = 0
 
     private val thorPattern = Regex("(^|\\s)(ayn\\s*)?thor(?:\\s*(lite|base|pro|max))?(\\s|$)")
 
@@ -103,8 +104,14 @@ object DeviceProfile {
 
     private fun String.normalized(): String = lowercase().replace('_', ' ').replace('-', ' ')
 
-    fun isThorLowerDisplay(widthPixels: Int, heightPixels: Int): Boolean =
-        widthPixels == LOWER_WIDTH_PIXELS && heightPixels == LOWER_HEIGHT_PIXELS
+    fun isThorLowerDisplay(
+        widthPixels: Int,
+        heightPixels: Int,
+        rotation: Int = THOR_DISPLAY_ROTATION,
+    ): Boolean =
+        widthPixels == LOWER_WIDTH_PIXELS &&
+            heightPixels == LOWER_HEIGHT_PIXELS &&
+            rotation == THOR_DISPLAY_ROTATION
 
     fun normalizeSlot(value: String): String = when (value.trim().lowercase()) {
         "a", "_a" -> "_a"

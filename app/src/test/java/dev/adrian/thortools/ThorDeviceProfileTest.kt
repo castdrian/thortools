@@ -1,5 +1,6 @@
 package dev.adrian.thortools
 
+import dev.adrian.thortools.utils.SystemUtils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -40,6 +41,8 @@ class ThorDeviceProfileTest {
     @Test
     fun classifiesThorDisplayGeometry() {
         assertTrue(DeviceProfile.isThorLowerDisplay(1240, 1080))
+        assertTrue(DeviceProfile.isThorLowerDisplay(1240, 1080, DeviceProfile.THOR_DISPLAY_ROTATION))
+        assertFalse(DeviceProfile.isThorLowerDisplay(1240, 1080, 1))
         assertFalse(DeviceProfile.isThorLowerDisplay(1080, 1240))
         assertFalse(DeviceProfile.isThorLowerDisplay(1920, 1080))
         assertEquals("lower", DeviceProfile.displayKind(1240, 1080))
@@ -85,6 +88,53 @@ class ThorDeviceProfileTest {
                 buildDate = "date",
             ).buildIdentity,
         )
+    }
+
+    @Test
+    fun readsVendorAndBootPropertyFallbacksWithoutOverridingPrimaryValues() {
+        val values = mapOf(
+            "ro.product.vendor.manufacturer" to "AYN",
+            "ro.product.odm.model" to "AYN Thor Lite",
+            "ro.product.vendor.device" to "thor_lite",
+            "ro.product.product.name" to "thor",
+            "ro.product.vendor.board" to "sm8650",
+            "ro.boot.hardware" to "qcom",
+            "ro.board.platform" to "sm8650",
+            "ro.vendor.build.fingerprint" to "ayn/thor:14/THOR/2:user/release-keys",
+            "ro.boot.serialno" to "thor-lite-serial",
+            "ro.boot.slot" to "b",
+        )
+        val properties = SystemUtils.getDeviceProperties { values[it].orEmpty() }
+
+        assertEquals("AYN", properties.manufacturer)
+        assertEquals("AYN Thor Lite", properties.model)
+        assertEquals("thor_lite", properties.device)
+        assertEquals("thor", properties.product)
+        assertEquals("sm8650", properties.board)
+        assertEquals("qcom", properties.hardware)
+        assertEquals("sm8650", properties.soc)
+        assertEquals("ayn/thor:14/THOR/2:user/release-keys", properties.buildFingerprint)
+        assertEquals("thor-lite-serial", properties.serial)
+        assertEquals("_b", properties.slot)
+        assertTrue(DeviceProfile.detect(properties).isThor)
+        assertEquals(ThorVariant.LITE, DeviceProfile.detect(properties).variant)
+    }
+
+    @Test
+    fun prefersPrimaryPropertyNamespacesBeforeFallbacks() {
+        val values = mapOf(
+            "ro.product.manufacturer" to "AYN",
+            "ro.product.vendor.manufacturer" to "fallback",
+            "ro.product.model" to "AYN Thor Pro",
+            "ro.product.vendor.model" to "AYN Thor Lite",
+            "ro.boot.slot_suffix" to "_a",
+            "ro.boot.slot" to "b",
+        )
+        val properties = SystemUtils.getDeviceProperties { values[it].orEmpty() }
+
+        assertEquals("AYN", properties.manufacturer)
+        assertEquals("AYN Thor Pro", properties.model)
+        assertEquals("_a", properties.slot)
     }
 
     @Test

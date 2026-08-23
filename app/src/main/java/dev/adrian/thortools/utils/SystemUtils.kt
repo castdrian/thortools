@@ -19,26 +19,32 @@ class RuntimeExecResult(
 }
 
 object SystemUtils {
-    fun getDeviceProperties(): DeviceProperties = DeviceProperties(
-        manufacturer = getProp("ro.product.manufacturer"),
-        brand = getProp("ro.product.brand"),
-        model = getProp("ro.product.model").ifBlank { getProp("ro.product.vendor.model") },
-        device = getProp("ro.product.device"),
-        product = getProp("ro.product.name"),
-        board = getProp("ro.product.board"),
-        hardware = getProp("ro.hardware").ifBlank { getProp("ro.boot.hardware") },
-        soc = getProp("ro.soc.model").ifBlank { getProp("ro.board.platform") },
-        platform = getProp("ro.fota.platform"),
-        firmware = getProp("ro.fota.version").ifBlank { getProp("ro.build.version.release") },
-        buildId = getProp("ro.build.id"),
-        buildDisplayId = getProp("ro.build.display.id"),
-        buildDate = getProp("ro.build.date"),
-        buildFingerprint = getProp("ro.build.fingerprint"),
-        serial = getProp("ro.serialno"),
-        slot = DeviceProfile.normalizeSlot(
-            getProp("ro.boot.slot_suffix").ifBlank { getProp("ro.boot.slot") },
-        ),
-    )
+    fun getDeviceProperties(propertyReader: (String) -> String = { getProp(it) }): DeviceProperties {
+        fun firstValue(vararg names: String): String = names
+            .asSequence()
+            .map(propertyReader)
+            .firstOrNull(String::isNotBlank)
+            .orEmpty()
+
+        return DeviceProperties(
+            manufacturer = firstValue("ro.product.manufacturer", "ro.product.vendor.manufacturer", "ro.product.odm.manufacturer"),
+            brand = firstValue("ro.product.brand", "ro.product.vendor.brand", "ro.product.odm.brand"),
+            model = firstValue("ro.product.model", "ro.product.vendor.model", "ro.product.odm.model", "ro.product.system.model"),
+            device = firstValue("ro.product.device", "ro.product.vendor.device", "ro.product.odm.device"),
+            product = firstValue("ro.product.name", "ro.product.vendor.name", "ro.product.odm.name", "ro.product.product.name"),
+            board = firstValue("ro.product.board", "ro.product.vendor.board", "ro.board.platform"),
+            hardware = firstValue("ro.hardware", "ro.boot.hardware", "ro.hardware.chipname"),
+            soc = firstValue("ro.soc.model", "ro.soc.manufacturer", "ro.board.platform", "ro.boot.hardware"),
+            platform = firstValue("ro.fota.platform", "ro.product.cpu.abi", "ro.product.cpu.abilist"),
+            firmware = firstValue("ro.fota.version", "ro.build.version.incremental", "ro.build.version.release"),
+            buildId = firstValue("ro.build.id", "ro.vendor.build.id"),
+            buildDisplayId = firstValue("ro.build.display.id", "ro.vendor.build.display.id"),
+            buildDate = firstValue("ro.build.date", "ro.vendor.build.date"),
+            buildFingerprint = firstValue("ro.build.fingerprint", "ro.vendor.build.fingerprint", "ro.odm.build.fingerprint"),
+            serial = firstValue("ro.serialno", "ro.boot.serialno"),
+            slot = DeviceProfile.normalizeSlot(firstValue("ro.boot.slot_suffix", "ro.boot.slot")),
+        )
+    }
 
     fun getKernelVersion(context: Context): String =
         RootUtils.runRootCommand(context, "cat /proc/version") ?: runCommand(arrayOf("cat", "/proc/version")).stdout
