@@ -30,7 +30,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +47,7 @@ import dev.adrian.thortools.ThorSnapshot
 import dev.adrian.thortools.ThorVariant
 import dev.adrian.thortools.utils.PatchUtils
 import dev.adrian.thortools.utils.getLogFile
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -63,18 +63,18 @@ enum class ThorSection {
 fun ThorControlScreen(
     session: ThorSession,
     context: Context,
+    operationScope: CoroutineScope,
     isLowerDisplay: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val scope = rememberCoroutineScope()
     var section by remember { mutableStateOf(ThorSection.STATUS) }
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize()) {
             ControlHeader(session.snapshot, section) { section = it }
             when (section) {
                 ThorSection.STATUS -> StatusPanel(session.snapshot, context)
-                ThorSection.TWEAKS -> TweaksPanel(session, context)
-                ThorSection.ROOT -> RootPanel(session, context, isLowerDisplay)
+                ThorSection.TWEAKS -> TweaksPanel(session, context, operationScope)
+                ThorSection.ROOT -> RootPanel(session, context, operationScope, isLowerDisplay)
                 ThorSection.ABOUT -> AboutPanel(context)
             }
             if (session.snapshot.operation.status == OperationStatus.RUNNING) {
@@ -95,7 +95,7 @@ fun ThorControlScreen(
             }
             if (section == ThorSection.STATUS) {
                 TextButton(
-                    onClick = { scope.launch { session.refresh() } },
+                    onClick = { operationScope.launch { session.refresh() } },
                     modifier = Modifier.align(Alignment.End).padding(horizontal = 12.dp),
                 ) {
                     Text("Refresh")
@@ -282,8 +282,7 @@ private fun DashboardHashes(context: Context, snapshot: ThorSnapshot) {
 }
 
 @Composable
-private fun TweaksPanel(session: ThorSession, context: Context) {
-    val scope = rememberCoroutineScope()
+private fun TweaksPanel(session: ThorSession, context: Context, operationScope: CoroutineScope) {
     val prefs = AppSettings.getSharedPrefs(context)
     val snapshot = session.snapshot
     var dpi by remember(snapshot.lcdDensity) { mutableStateOf(snapshot.lcdDensity.toFloat().coerceIn(AppSettings.DPI_MIN.toFloat(), AppSettings.DPI_MAX.toFloat())) }
@@ -308,7 +307,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
                     valueRange = AppSettings.DPI_MIN.toFloat()..AppSettings.DPI_MAX.toFloat(),
                     steps = AppSettings.DPI_MAX - AppSettings.DPI_MIN - 1,
                     enabled = enabled && actionReady,
-                    onValueChangeFinished = { session.run(scope, ThorOperation.SET_DPI, dpi.toInt().toString()) },
+                    onValueChangeFinished = { session.run(operationScope, ThorOperation.SET_DPI, dpi.toInt().toString()) },
                 )
                 Text("Default: ${AppSettings.getPropLcdDensity(prefs)}")
             }
@@ -318,7 +317,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
                 Text("Animation speed: ${snapshot.animationSpeed}x")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1f, 0.5f, 0f).forEach { value ->
-                        OutlinedButton(enabled = enabled && actionReady, onClick = { session.run(scope, ThorOperation.SET_ANIMATION, value.toString()) }) {
+                        OutlinedButton(enabled = enabled && actionReady, onClick = { session.run(operationScope, ThorOperation.SET_ANIMATION, value.toString()) }) {
                             Text(if (value == 0f) "Off" else "${value}x")
                         }
                     }
@@ -335,7 +334,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
                         valueRange = AppSettings.VOLUME_STEPS_MIN.toFloat()..AppSettings.VOLUME_STEPS_MAX.toFloat(),
                         steps = AppSettings.VOLUME_STEPS_MAX - AppSettings.VOLUME_STEPS_MIN - 1,
                         enabled = enabled && actionReady,
-                        onValueChangeFinished = { session.run(scope, ThorOperation.SET_VOLUME_STEPS, volumeSteps.toInt().toString()) },
+                        onValueChangeFinished = { session.run(operationScope, ThorOperation.SET_VOLUME_STEPS, volumeSteps.toInt().toString()) },
                     )
                 }
             }
@@ -354,7 +353,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
                         enabled = enabled && actionReady,
                         onCheckedChange = {
                             skipBootAnimation = it
-                            session.run(scope, ThorOperation.SET_BOOT_ANIMATION, it.toString())
+                            session.run(operationScope, ThorOperation.SET_BOOT_ANIMATION, it.toString())
                         },
                     )
                 }
@@ -366,8 +365,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
 }
 
 @Composable
-private fun RootPanel(session: ThorSession, context: Context, isLowerDisplay: Boolean) {
-    val scope = rememberCoroutineScope()
+private fun RootPanel(session: ThorSession, context: Context, operationScope: CoroutineScope, isLowerDisplay: Boolean) {
     val snapshot = session.snapshot
     var pendingOperation by remember { mutableStateOf<ThorOperation?>(null) }
     val thorReady = snapshot.profile.isThor
@@ -383,7 +381,7 @@ private fun RootPanel(session: ThorSession, context: Context, isLowerDisplay: Bo
     ) {
         Text("EZ Root for AYN Thor", style = MaterialTheme.typography.headlineSmall)
         Text("ThorTools checks the active slot and partition layout again before each image operation. Backups are copied to the app folder and Download folder.")
-        Button(enabled = operationReady(ThorOperation.INSTALL_MAGISK) && !snapshot.magiskInstalled, onClick = { session.run(scope, ThorOperation.INSTALL_MAGISK) }, modifier = Modifier.fillMaxWidth()) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
+        Button(enabled = operationReady(ThorOperation.INSTALL_MAGISK) && !snapshot.magiskInstalled, onClick = { session.run(operationScope, ThorOperation.INSTALL_MAGISK) }, modifier = Modifier.fillMaxWidth()) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
         Button(enabled = operationReady(ThorOperation.BACKUP) && snapshot.stockBackupSlots.size < 2, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = Modifier.fillMaxWidth()) { Text("Back up available slots (${snapshot.stockBackupSlots.size}/2 ready)") }
         Button(enabled = operationReady(ThorOperation.PATCH) && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = Modifier.fillMaxWidth()) { Text("Prepare root patch") }
         Button(enabled = operationReady(ThorOperation.FLASH), onClick = { pendingOperation = ThorOperation.FLASH }, modifier = Modifier.fillMaxWidth()) { Text("Flash active-slot patch") }
@@ -435,7 +433,7 @@ private fun RootPanel(session: ThorSession, context: Context, isLowerDisplay: Bo
             title = { Text(title) },
             text = { Text(message + confirmationDetails) },
             confirmButton = {
-                TextButton(onClick = { pendingOperation = null; session.run(scope, operation) }) { Text("Confirm") }
+                TextButton(onClick = { pendingOperation = null; session.run(operationScope, operation) }) { Text("Confirm") }
             },
             dismissButton = { TextButton(onClick = { pendingOperation = null }) { Text("Cancel") } },
         )

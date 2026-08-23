@@ -10,8 +10,12 @@ import dev.adrian.thortools.utils.RecoveryImageInput
 import dev.adrian.thortools.utils.RecoveryManifestStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -228,6 +232,48 @@ class ThorToolsInstrumentedTest {
             assertFalse(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
             assertFalse(preferences.contains(AppSettings.JOURNAL_MESSAGE_KEY))
         } finally {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .commit()
+        }
+    }
+
+    @Test
+    fun marksDisplayOperationCancellationAsInterrupted() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val baseline = SystemBackendFactory.create(context).snapshot()
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = baseline.copy(operation = operation)
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult {
+                started.countDown()
+                release.await()
+                return OperationResult(true, "unexpected completion")
+            }
+        }
+        val scope = CoroutineScope(Dispatchers.IO)
+        try {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .commit()
+            val session = ThorSession(context, backend)
+            session.load()
+            session.run(scope, ThorOperation.SET_DPI, "320")
+            assertTrue(started.await(5, TimeUnit.SECONDS))
+            scope.cancel()
+            release.countDown()
+            scope.coroutineContext[Job]?.join()
+            assertEquals(OperationStatus.INTERRUPTED, session.snapshot.operation.status)
+            assertTrue(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
+            assertTrue(session.acknowledgeInterruptedOperation())
+        } finally {
+            release.countDown()
+            scope.cancel()
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)

@@ -24,7 +24,7 @@ The lower-screen **Clear patched cache** action removes only Magisk-patched imag
 
 ## Recovery
 
-Restore stock before installing an OTA. If the app is interrupted, the next launch shows the interrupted operation in the dashboard without repeating it. Keep the Download-folder copies of the stock images until the Thor has rebooted successfully.
+Restore stock before installing an OTA. If the app is interrupted, the next launch shows the interrupted operation in the dashboard without repeating it. Reconnecting the lower display does not restart or duplicate a running operation. Keep the Download-folder copies of the stock images until the Thor has rebooted successfully.
 
 ## Scope
 

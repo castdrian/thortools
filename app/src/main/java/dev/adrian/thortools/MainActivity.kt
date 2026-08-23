@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
                 if (hasThorLowerDisplay) {
                     ThorDashboardScreen(session, this@MainActivity)
                 } else {
-                    ThorControlScreen(session, this@MainActivity)
+                    ThorControlScreen(session, this@MainActivity, lifecycleScope)
                 }
             }
         }
@@ -169,7 +169,7 @@ private class ThorPresentation(
             isFocusableInTouchMode = true
             setContent {
                 ThorToolsTheme {
-                    ThorControlScreen(session, context, isLowerDisplay = true)
+                    ThorControlScreen(session, context, activity.lifecycleScope, isLowerDisplay = true)
                 }
             }
         }
