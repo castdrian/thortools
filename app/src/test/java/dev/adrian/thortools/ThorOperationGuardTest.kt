@@ -34,6 +34,30 @@ class ThorOperationGuardTest {
     }
 
     @Test
+    fun blocksMutationsWhileAnOperationNeedsAttention() {
+        assertEquals(
+            "Another Thor operation is already in progress",
+            ThorOperationGuard.validate(
+                snapshot().copy(operation = OperationState(ThorOperation.FLASH, OperationStatus.RUNNING, "flashing")),
+                ThorOperation.SET_DPI,
+            ),
+        )
+        assertEquals(
+            "Acknowledge the Thor recovery record before starting another operation",
+            ThorOperationGuard.validate(
+                snapshot().copy(operation = OperationState(ThorOperation.FLASH, OperationStatus.INTERRUPTED, "interrupted")),
+                ThorOperation.SET_DPI,
+            ),
+        )
+        assertNull(
+            ThorOperationGuard.validate(
+                snapshot().copy(operation = OperationState(ThorOperation.FLASH, OperationStatus.RUNNING, "flashing")),
+                ThorOperation.REFRESH,
+            ),
+        )
+    }
+
+    @Test
     fun rejectsUnsafeImageConditions() {
         assertEquals(
             "Charge the Thor to at least 35% before image operations",
