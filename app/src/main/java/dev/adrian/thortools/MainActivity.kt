@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private var secondaryPresentation: ThorPresentation? = null
     private var secondaryDisplayRetry: Job? = null
     private var secondaryDisplayRetryCount = 0
+    private var secondaryPresentationRequested = false
     private var activityResumed = false
     private var hasThorLowerDisplay by mutableStateOf(false)
 
@@ -101,12 +102,13 @@ class MainActivity : ComponentActivity() {
         secondaryDisplayRetry?.cancel()
         secondaryDisplayRetry = null
         secondaryDisplayRetryCount = 0
-        dismissSecondaryDisplay()
+        dismissSecondaryDisplay(clearRequest = true)
         displayManager?.unregisterDisplayListener(displayListener)
         super.onStop()
     }
 
     private fun requestSecondaryDisplay() {
+        secondaryPresentationRequested = true
         secondaryDisplayRetry?.cancel()
         secondaryDisplayRetry = null
         secondaryDisplayRetryCount = 0
@@ -114,13 +116,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showSecondaryDisplay() {
-        if (!activityResumed || isFinishing) return
+        if (!secondaryPresentationRequested || !activityResumed || isFinishing) return
         val display = displayManager?.displays?.firstOrNull { candidate ->
             candidate.displayId != Display.DEFAULT_DISPLAY &&
                 DeviceProfile.isThorLowerDisplay(candidate.mode.physicalWidth, candidate.mode.physicalHeight)
         }
         if (display == null) {
             dismissSecondaryDisplay()
+            scheduleSecondaryDisplayRetry()
             return
         }
         secondaryDisplayRetry?.cancel()
@@ -140,16 +143,26 @@ class MainActivity : ComponentActivity() {
                 scheduleSecondaryDisplayRetry()
             }
         }
-        runCatching { presentation.show() }.onFailure {
-            secondaryPresentation = null
+        try {
+            presentation.show()
+        } catch (_: WindowManager.BadTokenException) {
+            if (secondaryPresentation === presentation) secondaryPresentation = null
+            hasThorLowerDisplay = false
+            scheduleSecondaryDisplayRetry()
+        } catch (_: WindowManager.InvalidDisplayException) {
+            if (secondaryPresentation === presentation) secondaryPresentation = null
+            hasThorLowerDisplay = false
+            scheduleSecondaryDisplayRetry()
+        } catch (_: RuntimeException) {
+            if (secondaryPresentation === presentation) secondaryPresentation = null
             hasThorLowerDisplay = false
             scheduleSecondaryDisplayRetry()
         }
     }
 
     private fun scheduleSecondaryDisplayRetry() {
-        if (!activityResumed || secondaryDisplayRetry?.isActive == true || secondaryDisplayRetryCount >= 5) return
-        secondaryDisplayRetryCount += 1
+        if (!secondaryPresentationRequested || !activityResumed || isFinishing || secondaryDisplayRetry?.isActive == true) return
+        secondaryDisplayRetryCount = (secondaryDisplayRetryCount + 1).coerceAtMost(8)
         secondaryDisplayRetry = lifecycleScope.launch {
             delay(300L * secondaryDisplayRetryCount)
             secondaryDisplayRetry = null
@@ -157,7 +170,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun dismissSecondaryDisplay() {
+    private fun dismissSecondaryDisplay(clearRequest: Boolean = false) {
+        if (clearRequest) {
+            secondaryPresentationRequested = false
+            secondaryDisplayRetry?.cancel()
+            secondaryDisplayRetry = null
+            secondaryDisplayRetryCount = 0
+        }
         secondaryPresentation?.dismiss()
         secondaryPresentation = null
         hasThorLowerDisplay = false
