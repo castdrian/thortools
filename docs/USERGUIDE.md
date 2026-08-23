@@ -4,7 +4,7 @@ ThorTools is designed around the AYN Thor's two displays. The upper display show
 
 ## Status
 
-The Status section reports the detected Thor variant, raw model information, firmware, build, active slot, battery, kernel, root state, Magisk state, and available boot partitions. Refresh before starting a sensitive operation.
+The Status section reports the detected Thor variant, raw model information, firmware, build, active slot, battery, kernel, root state, Magisk state, available boot partitions, and the live upper and lower panel geometry, refresh rate, and orientation. Refresh before starting a sensitive operation. The display topology card confirms when the dual-display workflow is ready and identifies when the app has fallen back to one screen.
 
 ## Tweaks
 

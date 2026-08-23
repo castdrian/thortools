@@ -57,6 +57,20 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         stockBackupSlots = emptySet(),
         patchedBackupSlots = emptySet(),
         operation = OperationState(),
+        displayDiagnostics = ThorDisplayDiagnostics(
+            upper = ThorDisplayPanel(
+                displayId = 0,
+                widthPixels = DeviceProfile.UPPER_WIDTH_PIXELS,
+                heightPixels = DeviceProfile.UPPER_HEIGHT_PIXELS,
+                refreshRateHz = 120f,
+            ),
+            lower = ThorDisplayPanel(
+                displayId = 1,
+                widthPixels = DeviceProfile.LOWER_WIDTH_PIXELS,
+                heightPixels = DeviceProfile.LOWER_HEIGHT_PIXELS,
+                refreshRateHz = 60f,
+            ),
+        ),
     )
 
     override fun snapshot(operation: OperationState): ThorSnapshot {

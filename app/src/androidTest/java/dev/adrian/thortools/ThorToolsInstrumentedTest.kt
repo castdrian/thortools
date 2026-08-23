@@ -70,6 +70,9 @@ class ThorToolsInstrumentedTest {
         assertEquals(ThorVariant.PRO, snapshot.profile.variant)
         assertTrue(snapshot.rootServiceAvailable)
         assertTrue(snapshot.backupDestinationWritable)
+        assertTrue(snapshot.displayDiagnostics.dualDisplayReady)
+        assertEquals("1920 x 1080", snapshot.displayDiagnostics.upper.geometryLabel)
+        assertEquals("1240 x 1080", snapshot.displayDiagnostics.lower.geometryLabel)
     }
 
     @Test
