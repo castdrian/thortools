@@ -51,6 +51,7 @@ data class OperationState(
     val operation: ThorOperation? = null,
     val status: OperationStatus = OperationStatus.IDLE,
     val message: String = "Ready",
+    val rebootRequired: Boolean = false,
 )
 
 data class ThorDisplayPanel(
@@ -169,7 +170,45 @@ data class ThorSnapshot(
 data class OperationResult(
     val success: Boolean,
     val message: String,
+    val rebootRequired: Boolean = false,
 )
+
+private fun pendingRebootState(context: Context): OperationState? {
+    val prefs = AppSettings.getSharedPrefs(context)
+    val name = prefs.getString(AppSettings.PENDING_REBOOT_OPERATION_KEY, null) ?: return null
+    val marker = prefs.getLong(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, Long.MIN_VALUE)
+    if (marker != SystemUtils.getBootMarker()) {
+        clearPendingReboot(context)
+        return null
+    }
+    return OperationState(
+        operation = runCatching { ThorOperation.valueOf(name) }.getOrNull(),
+        status = prefs.getString(AppSettings.PENDING_REBOOT_STATUS_KEY, OperationStatus.SUCCESS.name)
+            ?.let { value -> runCatching { OperationStatus.valueOf(value) }.getOrNull() }
+            ?: OperationStatus.SUCCESS,
+        message = prefs.getString(AppSettings.PENDING_REBOOT_MESSAGE_KEY, "Reboot required") ?: "Reboot required",
+        rebootRequired = true,
+    )
+}
+
+private fun hasPendingReboot(context: Context): Boolean = pendingRebootState(context) != null
+
+private fun persistPendingReboot(context: Context, state: OperationState): Boolean =
+    AppSettings.getSharedPrefs(context).edit()
+        .putString(AppSettings.PENDING_REBOOT_OPERATION_KEY, state.operation?.name)
+        .putString(AppSettings.PENDING_REBOOT_MESSAGE_KEY, state.message)
+        .putString(AppSettings.PENDING_REBOOT_STATUS_KEY, state.status.name)
+        .putLong(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, SystemUtils.getBootMarker())
+        .commit()
+
+private fun clearPendingReboot(context: Context) {
+    AppSettings.getSharedPrefs(context).edit()
+        .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+        .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+        .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+        .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+        .commit()
+}
 
 interface SystemBackend {
     fun snapshot(operation: OperationState = OperationState()): ThorSnapshot
@@ -191,6 +230,16 @@ object ThorOperationGuard {
         }
         if (operation != ThorOperation.REFRESH && snapshot.operation.status == OperationStatus.INTERRUPTED) {
             return "Acknowledge the Thor recovery record before starting another operation"
+        }
+        if (snapshot.operation.rebootRequired && operation !in setOf(ThorOperation.REFRESH, ThorOperation.REBOOT)) {
+            return "Reboot the Thor before starting another operation"
+        }
+        if (snapshot.operation.rebootRequired &&
+            operation == ThorOperation.REBOOT &&
+            snapshot.operation.operation == ThorOperation.REBOOT &&
+            snapshot.operation.status == OperationStatus.SUCCESS
+        ) {
+            return "The Thor reboot has already been requested; wait for it to restart"
         }
         if (operation.requiresRootService && !snapshot.rootServiceAvailable) {
             return "The Thor privileged root service is unavailable"
@@ -333,7 +382,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
     }
 
     override fun perform(operation: ThorOperation, argument: String?): OperationResult {
-        val current = snapshot()
+        val current = snapshot(pendingRebootState(context) ?: OperationState())
         ThorOperationGuard.validate(current, operation)?.let { return OperationResult(false, it) }
         return when (operation) {
             ThorOperation.REFRESH -> OperationResult(true, "System state refreshed")
@@ -355,17 +404,27 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             }
             ThorOperation.FLASH -> if (!current.magiskInstalled || !current.patchedBackupAvailable) {
                 OperationResult(false, "A Magisk-patched active-slot image is required")
-            } else if (PatchUtils.flashBoot(context, current.activeSlot)) {
-                OperationResult(true, "Root patch flashed; reboot required")
             } else {
-                OperationResult(false, "No verified current-build active-slot patch is available")
+                val result = PatchUtils.flashBoot(context, current.activeSlot)
+                if (result.success) {
+                    OperationResult(true, "Root patch flashed; reboot required", rebootRequired = true)
+                } else if (result.attempted) {
+                    OperationResult(false, "The root patch write did not complete; reboot the Thor before retrying or restoring", rebootRequired = true)
+                } else {
+                    OperationResult(false, "No verified current-build active-slot patch is available")
+                }
             }
             ThorOperation.RESTORE -> if (!current.stockRestoreAvailable) {
                 OperationResult(false, "A stock active-slot backup is required")
-            } else if (PatchUtils.restoreBoot(context, current.activeSlot)) {
-                OperationResult(true, "Stock image restored; reboot required")
             } else {
-                OperationResult(false, "No verified current-build stock image is available")
+                val result = PatchUtils.restoreBoot(context, current.activeSlot)
+                if (result.success) {
+                    OperationResult(true, "Stock image restored; reboot required", rebootRequired = true)
+                } else if (result.attempted) {
+                    OperationResult(false, "The stock restore write did not complete; reboot the Thor before retrying", rebootRequired = true)
+                } else {
+                    OperationResult(false, "No verified current-build stock image is available")
+                }
             }
             ThorOperation.CLEAR_CACHE -> {
                 val cleared = PatchUtils.clearBootCache(context)
@@ -394,7 +453,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                 if (value !in AppSettings.VOLUME_STEPS_MIN..AppSettings.VOLUME_STEPS_MAX) return OperationResult(false, "Volume steps must be between ${AppSettings.VOLUME_STEPS_MIN} and ${AppSettings.VOLUME_STEPS_MAX}")
                 AppSettings.setVolumeSteps(AppSettings.getSharedPrefs(context), value)
                 val saved = AppSettings.save(context)
-                OperationResult(saved, if (saved) "Volume steps set to $value; reboot required" else "Could not save the volume-step setting")
+                OperationResult(saved, if (saved) "Volume steps set to $value; reboot required" else "Could not save the volume-step setting", rebootRequired = saved)
             }
             ThorOperation.SET_BOOT_ANIMATION -> {
                 val enabled = when (argument) {
@@ -406,7 +465,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                 val saved = AppSettings.save(context)
                 OperationResult(saved, if (saved) {
                     if (enabled) "Boot animation disabled; reboot required" else "Boot animation enabled; reboot required"
-                } else "Could not save the boot-animation setting")
+                } else "Could not save the boot-animation setting", rebootRequired = saved)
             }
         }
     }
@@ -423,13 +482,16 @@ class ThorSession(
 
     private fun operationFromJournal(): OperationState {
         val prefs = AppSettings.getSharedPrefs(context)
-        val name = prefs.getString(AppSettings.JOURNAL_OPERATION_KEY, null) ?: return OperationState()
-        val message = prefs.getString(AppSettings.JOURNAL_MESSAGE_KEY, "Interrupted") ?: "Interrupted"
-        return OperationState(
-            operation = runCatching { ThorOperation.valueOf(name) }.getOrNull(),
-            status = OperationStatus.INTERRUPTED,
-            message = "Previous operation stopped before completion: $message",
-        )
+        val journalName = prefs.getString(AppSettings.JOURNAL_OPERATION_KEY, null)
+        if (journalName != null) {
+            val message = prefs.getString(AppSettings.JOURNAL_MESSAGE_KEY, "Interrupted") ?: "Interrupted"
+            return OperationState(
+                operation = runCatching { ThorOperation.valueOf(journalName) }.getOrNull(),
+                status = OperationStatus.INTERRUPTED,
+                message = "Previous operation stopped before completion: $message",
+            )
+        }
+        return pendingRebootState(context) ?: OperationState()
     }
 
     suspend fun load() {
@@ -442,10 +504,13 @@ class ThorSession(
 
     suspend fun refresh() {
         if (snapshot.operation.status == OperationStatus.RUNNING) return
+        val pending = pendingRebootState(context)
         val refreshedOperation = if (hasRecoveryJournal()) {
             snapshot.operation
+        } else if (pending != null) {
+            pending
         } else {
-            snapshot.operation.copy(status = OperationStatus.IDLE, message = "Ready")
+            snapshot.operation.copy(status = OperationStatus.IDLE, message = "Ready", rebootRequired = false)
         }
         snapshot = runCatching {
             withContext(Dispatchers.IO) { backend.snapshot(refreshedOperation) }
@@ -478,6 +543,12 @@ class ThorSession(
 
     fun run(scope: CoroutineScope, operation: ThorOperation, argument: String? = null) {
         if (snapshot.operation.status == OperationStatus.RUNNING || hasRecoveryJournal()) return
+        ThorOperationGuard.validate(snapshot, operation)?.let { message ->
+            snapshot = snapshot.copy(
+                operation = OperationState(operation, OperationStatus.FAILURE, message, snapshot.operation.rebootRequired),
+            )
+            return
+        }
         val running = OperationState(operation, OperationStatus.RUNNING, "${operation.name.lowercase().replace('_', ' ')} in progress")
         if (!persistJournal(running)) {
             snapshot = snapshot.copy(
@@ -506,7 +577,9 @@ class ThorSession(
                 operation,
                 if (result.success) OperationStatus.SUCCESS else OperationStatus.FAILURE,
                 result.message,
+                rebootRequired = result.rebootRequired || hasPendingReboot(context),
             )
+            if (result.rebootRequired) persistPendingReboot(context, finished)
             val journalCleared = clearJournal()
             val reported = if (journalCleared) {
                 finished
@@ -541,4 +614,5 @@ class ThorSession(
 
     private fun hasRecoveryJournal(): Boolean =
         AppSettings.getSharedPrefs(context).contains(AppSettings.JOURNAL_OPERATION_KEY)
+
 }

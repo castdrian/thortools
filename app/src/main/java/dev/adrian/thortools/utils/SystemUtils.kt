@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import android.os.SystemClock
 import dev.adrian.thortools.DeviceProfile
 import dev.adrian.thortools.DeviceProperties
 import java.io.BufferedReader
@@ -86,6 +87,8 @@ object SystemUtils {
         val scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
         return if (level >= 0 && scale > 0) (level * 100 / scale).coerceIn(0, 100) else null
     }
+
+    fun getBootMarker(): Long = System.currentTimeMillis() - SystemClock.elapsedRealtime()
 
     fun runCommand(command: Array<String>): RuntimeExecResult {
         var process: Process? = null

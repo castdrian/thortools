@@ -82,6 +82,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
     override fun perform(operation: ThorOperation, argument: String?): OperationResult {
         state = stateWithPersistedImages()
         ThorOperationGuard.validate(state, operation)?.let { return OperationResult(false, it) }
+        var rebootRequired = false
         when (operation) {
             ThorOperation.BACKUP -> {
                 writeImages("boot", "init_boot")
@@ -99,14 +100,20 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                     patchedBackupSlots = setOf("_a", "_b"),
                 )
             }
-            ThorOperation.FLASH -> state = state.copy(
-                rooted = true,
-                profile = state.profile.copy(capabilities = state.profile.capabilities + ThorCapability.ROOTED),
-            )
-            ThorOperation.RESTORE -> state = state.copy(
-                rooted = false,
-                profile = state.profile.copy(capabilities = state.profile.capabilities - ThorCapability.ROOTED),
-            )
+            ThorOperation.FLASH -> {
+                rebootRequired = true
+                state = state.copy(
+                    rooted = true,
+                    profile = state.profile.copy(capabilities = state.profile.capabilities + ThorCapability.ROOTED),
+                )
+            }
+            ThorOperation.RESTORE -> {
+                rebootRequired = true
+                state = state.copy(
+                    rooted = false,
+                    profile = state.profile.copy(capabilities = state.profile.capabilities - ThorCapability.ROOTED),
+                )
+            }
             ThorOperation.CLEAR_CACHE -> {
                 val patchedNames = RecoveryManifestStore.records(context)
                     .filter { it.patched }
@@ -132,7 +139,8 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
             ThorOperation.REFRESH,
             -> Unit
         }
-        return OperationResult(true, "Debug backend completed ${operation.name.lowercase().replace('_', ' ')}")
+        if (operation in setOf(ThorOperation.SET_VOLUME_STEPS, ThorOperation.SET_BOOT_ANIMATION)) rebootRequired = true
+        return OperationResult(true, "Debug backend completed ${operation.name.lowercase().replace('_', ' ')}", rebootRequired)
     }
 
     private fun writeImages(vararg prefixes: String) {

@@ -14,7 +14,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -375,6 +377,54 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .commit()
+        }
+    }
+
+    @Test
+    fun persistsRebootRequiredStateUntilTheThorRestarts() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val baseline = SystemBackendFactory.create(context).snapshot()
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = baseline.copy(operation = operation)
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult =
+                OperationResult(true, "write complete", rebootRequired = true)
+        }
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        try {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+            val session = ThorSession(context, backend)
+            session.load()
+            session.run(scope, ThorOperation.SET_DPI, "320")
+            withTimeout(5_000L) {
+                while (!session.snapshot.operation.rebootRequired) delay(10L)
+            }
+            assertTrue(preferences.contains(AppSettings.PENDING_REBOOT_OPERATION_KEY))
+            val restored = ThorSession(context, backend)
+            restored.load()
+            assertTrue(restored.snapshot.operation.rebootRequired)
+            assertEquals(
+                "Reboot the Thor before starting another operation",
+                ThorOperationGuard.validate(restored.snapshot, ThorOperation.SET_DPI),
+            )
+        } finally {
+            scope.cancel()
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
                 .commit()
         }
     }

@@ -319,6 +319,9 @@ private fun DashboardOperation(snapshot: ThorSnapshot, context: Context) {
             }
             Text(snapshot.operation.status.label())
             Text(snapshot.operation.message)
+            if (snapshot.operation.rebootRequired) {
+                Text("Reboot required before any other Thor operation.", color = MaterialTheme.colorScheme.error)
+            }
             Text("Recovery folder: ${context.getExternalFilesDir(null)?.absolutePath ?: "Unavailable"}", style = MaterialTheme.typography.bodySmall)
             Text("Latest operation log: ${getLogFile(context)?.absolutePath ?: "Unavailable"}", style = MaterialTheme.typography.bodySmall)
             Text("Download folder: /storage/emulated/0/Download", style = MaterialTheme.typography.bodySmall)
@@ -503,6 +506,7 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
         OutlinedButton(enabled = operationReady(ThorOperation.CLEAR_CACHE) && snapshot.patchedCacheAvailable, onClick = { pendingOperation = ThorOperation.CLEAR_CACHE }, modifier = commandModifier) { Text("Clear patched cache") }
         if (!thorReady) Text("This device is in diagnostics-only mode because it is not an AYN Thor.", color = MaterialTheme.colorScheme.error)
         if (thorReady && !rootReady) Text("This Thor is in diagnostics-only mode until the privileged service and active slot are available.", color = MaterialTheme.colorScheme.error)
+        if (snapshot.operation.rebootRequired) Text("Reboot the Thor before starting another operation.", color = MaterialTheme.colorScheme.error)
         backupReason?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
 

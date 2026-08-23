@@ -22,6 +22,10 @@ object AppSettings {
     const val PROP_VOLUME_STEPS_KEY = "propMediaVolSteps"
     const val JOURNAL_OPERATION_KEY = "journalOperation"
     const val JOURNAL_MESSAGE_KEY = "journalMessage"
+    const val PENDING_REBOOT_OPERATION_KEY = "pendingRebootOperation"
+    const val PENDING_REBOOT_MESSAGE_KEY = "pendingRebootMessage"
+    const val PENDING_REBOOT_STATUS_KEY = "pendingRebootStatus"
+    const val PENDING_REBOOT_BOOT_MARKER_KEY = "pendingRebootBootMarker"
     const val RECOVERY_MANIFEST_KEY = "recoveryManifest"
 
     fun getSharedPrefs(context: Context): SharedPreferences =

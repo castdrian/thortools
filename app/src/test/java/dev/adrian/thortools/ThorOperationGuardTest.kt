@@ -136,6 +136,37 @@ class ThorOperationGuardTest {
     }
 
     @Test
+    fun blocksMutationsUntilTheThorHasRebootedAfterAWrite() {
+        val pending = snapshot().copy(
+            operation = OperationState(
+                operation = ThorOperation.FLASH,
+                status = OperationStatus.SUCCESS,
+                message = "Root patch flashed; reboot required",
+                rebootRequired = true,
+            ),
+        )
+        assertEquals(
+            "Reboot the Thor before starting another operation",
+            ThorOperationGuard.validate(pending, ThorOperation.SET_DPI),
+        )
+        assertNull(ThorOperationGuard.validate(pending, ThorOperation.REBOOT))
+        assertNull(ThorOperationGuard.validate(pending, ThorOperation.REFRESH))
+        val requested = pending.copy(
+            operation = pending.operation.copy(operation = ThorOperation.REBOOT),
+        )
+        assertEquals(
+            "The Thor reboot has already been requested; wait for it to restart",
+            ThorOperationGuard.validate(requested, ThorOperation.REBOOT),
+        )
+        assertNull(
+            ThorOperationGuard.validate(
+                requested.copy(operation = requested.operation.copy(status = OperationStatus.FAILURE)),
+                ThorOperation.REBOOT,
+            ),
+        )
+    }
+
+    @Test
     fun keepsRestoreAvailableAfterRootFlash() {
         assertNull(
             ThorOperationGuard.validate(

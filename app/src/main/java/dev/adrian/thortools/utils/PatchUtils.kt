@@ -4,6 +4,11 @@ import android.content.Context
 import dev.adrian.thortools.DeviceProfile
 import java.io.File
 
+data class PartitionWriteResult(
+    val success: Boolean,
+    val attempted: Boolean,
+)
+
 object PatchUtils {
     private val slots = listOf("_a", "_b")
     private val partitions = listOf("init_boot", "boot")
@@ -132,9 +137,9 @@ object PatchUtils {
         return success
     }
 
-    fun flashBoot(context: Context, expectedSlot: String): Boolean {
-        val slot = stableSlot(expectedSlot) ?: return false
-        val partition = preferredPartition(context, slot) ?: return false
+    fun flashBoot(context: Context, expectedSlot: String): PartitionWriteResult {
+        val slot = stableSlot(expectedSlot) ?: return PartitionWriteResult(false, false)
+        val partition = preferredPartition(context, slot) ?: return PartitionWriteResult(false, false)
         val buildIdentity = currentBuildIdentity()
         val patchedHash = RecoveryManifestStore.verifiedPatchedHash(
                 context = context,
@@ -143,8 +148,11 @@ object PatchUtils {
                 localPath = patchedPath(context, partition, slot),
                 stockPath = stockPath(context, partition, slot),
                 buildIdentity = buildIdentity,
-            ) ?: return false
-        return RootUtils.runRootScript(context, "$partition.flash.sh", listOf(slot, patchedHash)) == "0"
+            ) ?: return PartitionWriteResult(false, false)
+        return PartitionWriteResult(
+            success = RootUtils.runRootScript(context, "$partition.flash.sh", listOf(slot, patchedHash)) == "0",
+            attempted = true,
+        )
     }
 
     fun patchBoot(context: Context, expectedSlot: String): String {
@@ -170,9 +178,9 @@ object PatchUtils {
         return ""
     }
 
-    fun restoreBoot(context: Context, expectedSlot: String): Boolean {
-        val slot = stableSlot(expectedSlot) ?: return false
-        val partition = preferredPartition(context, slot) ?: return false
+    fun restoreBoot(context: Context, expectedSlot: String): PartitionWriteResult {
+        val slot = stableSlot(expectedSlot) ?: return PartitionWriteResult(false, false)
+        val partition = preferredPartition(context, slot) ?: return PartitionWriteResult(false, false)
         val buildIdentity = currentBuildIdentity()
         val source = RecoveryManifestStore.verifiedStockSourceInfo(
             context = context,
@@ -181,8 +189,11 @@ object PatchUtils {
             localPath = stockPath(context, partition, slot),
             downloadPath = downloadPath(partition, slot),
             buildIdentity = buildIdentity,
-        ) ?: return false
-        return RootUtils.runRootScript(context, "$partition.restore.sh", listOf(source.path, slot, source.sha256)) == "0"
+        ) ?: return PartitionWriteResult(false, false)
+        return PartitionWriteResult(
+            success = RootUtils.runRootScript(context, "$partition.restore.sh", listOf(source.path, slot, source.sha256)) == "0",
+            attempted = true,
+        )
     }
 
     private fun patchPartition(context: Context, partition: String, output: String, magiskPath: String, slot: String): Boolean {

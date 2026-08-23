@@ -25,6 +25,23 @@ class ThorRecoveryGuidanceTest {
     }
 
     @Test
+    fun requiresARebootAfterAWrite() {
+        assertEquals(
+            "Reboot the Thor before starting another operation. Wait for the dashboard to read the new boot state.",
+            ThorRecoveryGuidance.forSnapshot(
+                snapshot().copy(
+                    operation = OperationState(
+                        operation = ThorOperation.FLASH,
+                        status = OperationStatus.SUCCESS,
+                        message = "Root patch flashed; reboot required",
+                        rebootRequired = true,
+                    ),
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun explainsOperationFailures() {
         assertEquals(
             "The last operation failed. Review its message and the capability checks before retrying.",
