@@ -206,12 +206,12 @@ private fun pendingRebootState(context: Context): OperationState? {
 
 private fun hasPendingReboot(context: Context): Boolean = pendingRebootState(context) != null
 
-private fun persistPendingReboot(context: Context, state: OperationState): Boolean =
+private fun persistPendingReboot(context: Context, state: OperationState, bootMarker: String): Boolean =
     AppSettings.getSharedPrefs(context).edit()
         .putString(AppSettings.PENDING_REBOOT_OPERATION_KEY, state.operation?.name)
         .putString(AppSettings.PENDING_REBOOT_MESSAGE_KEY, state.message)
         .putString(AppSettings.PENDING_REBOOT_STATUS_KEY, state.status.name)
-        .putString(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, SystemUtils.getBootMarker(context))
+        .putString(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, bootMarker)
         .commit()
 
 private fun clearPendingReboot(context: Context) {
@@ -576,6 +576,7 @@ class ThorSession(
         }
         snapshot = snapshot.copy(operation = running)
         scope.launch {
+            val operationBootMarker = SystemUtils.getBootMarker(context)
             val result = try {
                 withContext(Dispatchers.IO) { backend.perform(operation, argument) }
             } catch (error: CancellationException) {
@@ -589,7 +590,7 @@ class ThorSession(
                         },
                         rebootRequired = operation.requiresRebootAfterWrite,
                     )
-                    if (interrupted.rebootRequired) persistPendingReboot(context, interrupted)
+                    if (interrupted.rebootRequired) persistPendingReboot(context, interrupted, operationBootMarker)
                     snapshot = snapshot.copy(operation = interrupted)
                 }
                 throw error
@@ -606,7 +607,7 @@ class ThorSession(
                 result.message,
                 rebootRequired = result.rebootRequired || hasPendingReboot(context),
             )
-            if (result.rebootRequired) persistPendingReboot(context, finished)
+            if (result.rebootRequired) persistPendingReboot(context, finished, operationBootMarker)
             val journalCleared = clearJournal()
             val reported = if (journalCleared) {
                 finished

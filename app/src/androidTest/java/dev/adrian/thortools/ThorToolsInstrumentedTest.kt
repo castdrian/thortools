@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import dev.adrian.thortools.utils.RecoveryImageInput
 import dev.adrian.thortools.utils.RecoveryManifestStore
 import dev.adrian.thortools.utils.FileUtils
+import dev.adrian.thortools.utils.SystemUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -457,6 +458,10 @@ class ThorToolsInstrumentedTest {
                 while (!session.snapshot.operation.rebootRequired) delay(10L)
             }
             assertTrue(preferences.contains(AppSettings.PENDING_REBOOT_OPERATION_KEY))
+            assertEquals(
+                SystemUtils.getBootMarker(context),
+                preferences.getString(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY, null),
+            )
             assertEquals(
                 "Reboot the Thor before starting another operation",
                 ThorOperationGuard.validate(session.snapshot, ThorOperation.SET_DPI),
