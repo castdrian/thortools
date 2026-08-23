@@ -68,7 +68,13 @@ object FileUtils {
     fun isBackupDestinationWritable(context: Context): Boolean {
         val directory = context.getExternalFilesDir(null) ?: return false
         if (!directory.exists() && !directory.mkdirs()) return false
-        return directory.isDirectory && directory.canWrite()
+        if (!directory.isDirectory || !directory.canWrite()) return false
+        val downloadPath = getPathDownload()
+        val quotedDownloadPath = downloadPath.replace("'", "'\\''")
+        return RootUtils.runRootCommand(
+            context,
+            "mkdir -p '$quotedDownloadPath' && [ -d '$quotedDownloadPath' ] && [ -w '$quotedDownloadPath' ] && printf '%s' 1 || printf '%s' 0",
+        ) == "1"
     }
 
     fun getPathWorking(context: Context, relativePath: String? = null): String {
