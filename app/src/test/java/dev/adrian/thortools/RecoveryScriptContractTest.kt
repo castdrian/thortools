@@ -131,6 +131,24 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun failedModuleSettingWritesResynchronizePreviousState() {
+        val source = File("src/main/java/dev/adrian/thortools/SystemBackend.kt").readText()
+        assertTrue(source.contains("private fun rollbackModuleSetting(context: Context, restore: () -> Boolean)"))
+        assertTrue(source.contains("val moduleStateRestored = preferencesRestored && AppSettings.save(context)"))
+        assertTrue(source.contains("val rollback = rollbackModuleSetting(context)"))
+        assertTrue(source.contains("previous preference restored but module state could not be synchronized"))
+    }
+
+    @Test
+    fun moduleInstallationStagesAndRecoversThePreviousCopy() {
+        val source = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
+        assertTrue(source.contains(".thortools-staging"))
+        assertTrue(source.contains(".thortools-previous"))
+        assertTrue(source.contains("mv ${'$'}{shellQuote(stagingPath)} ${'$'}{shellQuote(modulePath)}"))
+        assertTrue(source.contains("mv ${'$'}{shellQuote(previousPath)} ${'$'}{shellQuote(modulePath)}"))
+    }
+
+    @Test
     fun patchUtilsPassesValidatedSlotsToMutatingScripts() {
         val patchUtilsSource = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
         assertTrue(patchUtilsSource.contains("fun backupBoot(context: Context, expectedSlot: String)"))

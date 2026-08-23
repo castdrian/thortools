@@ -148,8 +148,45 @@ object RootUtils {
     fun installThorToolsMagiskModule(context: Context): Boolean {
         val modulePath = "$MODULE_DIR/thortools"
         val sourcePath = "${context.filesDir}/app/support/magisk/thortools"
-        return runRootAction(context, "mkdir -p $modulePath") &&
-            runRootAction(context, "cp -fR \"$sourcePath/.\" \"$modulePath/\"")
+        val stagingPath = "$MODULE_DIR/.thortools-staging"
+        val previousPath = "$MODULE_DIR/.thortools-previous"
+        val command = """
+            (
+            if [ -e ${shellQuote(previousPath)} ]; then
+                if [ -e ${shellQuote(modulePath)} ]; then
+                    rm -rf ${shellQuote(previousPath)} || exit 1
+                else
+                    mv ${shellQuote(previousPath)} ${shellQuote(modulePath)} || exit 1
+                fi
+            fi
+            rm -rf ${shellQuote(stagingPath)} || exit 1
+            mkdir -p ${shellQuote(stagingPath)} || exit 1
+            cp -fR ${shellQuote("$sourcePath/.")} ${shellQuote("$stagingPath/")} || {
+                rm -rf ${shellQuote(stagingPath)}
+                exit 1
+            }
+            [ -s ${shellQuote("$stagingPath/module.prop")} ] || {
+                rm -rf ${shellQuote(stagingPath)}
+                exit 1
+            }
+            if [ -e ${shellQuote(modulePath)} ]; then
+                mv ${shellQuote(modulePath)} ${shellQuote(previousPath)} || {
+                    rm -rf ${shellQuote(stagingPath)}
+                    exit 1
+                }
+            fi
+            if mv ${shellQuote(stagingPath)} ${shellQuote(modulePath)}; then
+                rm -rf ${shellQuote(previousPath)} || exit 1
+                exit 0
+            fi
+            rm -rf ${shellQuote(modulePath)}
+            if [ -e ${shellQuote(previousPath)} ]; then
+                mv ${shellQuote(previousPath)} ${shellQuote(modulePath)} || exit 1
+            fi
+            exit 1
+            )
+        """.trimIndent()
+        return runRootAction(context, command)
     }
 
     fun isThorToolsMagiskModuleInstalled(context: Context): Boolean =

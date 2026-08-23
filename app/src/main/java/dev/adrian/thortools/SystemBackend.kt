@@ -197,6 +197,17 @@ data class OperationResult(
     val rebootRequired: Boolean = false,
 )
 
+private data class ModuleSettingRollback(
+    val preferencesRestored: Boolean,
+    val moduleStateRestored: Boolean,
+)
+
+private fun rollbackModuleSetting(context: Context, restore: () -> Boolean): ModuleSettingRollback {
+    val preferencesRestored = restore()
+    val moduleStateRestored = preferencesRestored && AppSettings.save(context)
+    return ModuleSettingRollback(preferencesRestored, moduleStateRestored)
+}
+
 private fun pendingRebootState(context: Context): OperationState? {
     val prefs = AppSettings.getSharedPrefs(context)
     val name = prefs.getString(AppSettings.PENDING_REBOOT_OPERATION_KEY, null) ?: return null
@@ -492,12 +503,18 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                 val wasConfigured = AppSettings.hasVolumeStepsOverride(prefs)
                 val previousValue = AppSettings.getVolumeSteps(prefs)
                 val saved = AppSettings.setVolumeSteps(prefs, value) && AppSettings.save(context)
-                val rolledBack = saved || AppSettings.restoreVolumeSteps(prefs, wasConfigured, previousValue)
-                OperationResult(saved, when {
-                    saved -> "Volume steps set to $value; reboot required"
-                    rolledBack -> "Could not save the volume-step setting"
-                    else -> "Could not save or restore the volume-step setting"
-                }, rebootRequired = saved)
+                if (saved) {
+                    OperationResult(true, "Volume steps set to $value; reboot required", rebootRequired = true)
+                } else {
+                    val rollback = rollbackModuleSetting(context) {
+                        AppSettings.restoreVolumeSteps(prefs, wasConfigured, previousValue)
+                    }
+                    OperationResult(false, when {
+                        rollback.moduleStateRestored -> "Could not save the volume-step setting; previous setting restored"
+                        rollback.preferencesRestored -> "Could not save the volume-step setting; previous preference restored but module state could not be synchronized"
+                        else -> "Could not save or restore the volume-step setting"
+                    })
+                }
             }
             ThorOperation.SET_BOOT_ANIMATION -> {
                 val enabled = when (argument) {
@@ -509,14 +526,22 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                 val wasConfigured = prefs.contains(AppSettings.SKIP_BOOT_ANIMATION_KEY)
                 val previousValue = AppSettings.getSkipBootAnimation(prefs)
                 val saved = AppSettings.setSkipBootAnimation(prefs, enabled) && AppSettings.save(context)
-                val rolledBack = saved || AppSettings.restoreSkipBootAnimation(prefs, wasConfigured, previousValue)
-                OperationResult(saved, if (saved) {
-                    if (enabled) "Boot animation disabled; reboot required" else "Boot animation enabled; reboot required"
-                } else if (rolledBack) {
-                    "Could not save the boot-animation setting"
+                if (saved) {
+                    OperationResult(
+                        true,
+                        if (enabled) "Boot animation disabled; reboot required" else "Boot animation enabled; reboot required",
+                        rebootRequired = true,
+                    )
                 } else {
-                    "Could not save or restore the boot-animation setting"
-                }, rebootRequired = saved)
+                    val rollback = rollbackModuleSetting(context) {
+                        AppSettings.restoreSkipBootAnimation(prefs, wasConfigured, previousValue)
+                    }
+                    OperationResult(false, when {
+                        rollback.moduleStateRestored -> "Could not save the boot-animation setting; previous setting restored"
+                        rollback.preferencesRestored -> "Could not save the boot-animation setting; previous preference restored but module state could not be synchronized"
+                        else -> "Could not save or restore the boot-animation setting"
+                    })
+                }
             }
         }
     }
