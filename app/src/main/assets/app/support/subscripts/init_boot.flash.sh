@@ -9,13 +9,10 @@ LOG_FILE="$WORKING_PATH/init_boot.flash.log"
 
 echo "Flash rooted init_boot.img starting..." > $LOG_FILE
 
-ACTIVE_SLOT=$(getprop ro.boot.slot_suffix)
-case "$ACTIVE_SLOT" in
-    a) ACTIVE_SLOT="_a" ;;
-    b) ACTIVE_SLOT="_b" ;;
-    _a|_b) ;;
-    *) exit 1 ;;
-esac
+if ! require_active_slot "$1"; then
+    echo "Active slot changed before init_boot flash" >> "$LOG_FILE"
+    exit 2
+fi
 BOOT_IMG="$WORKING_PATH/init_boot_patched$ACTIVE_SLOT.img"
 # BOOT_DEVICE=$(ls -la /dev/block/bootdevice/by-name | grep " init_boot$ACTIVE_SLOT " | sed -En 's/^.*(\/dev\/block\/.*)$/\1/p')
 BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"

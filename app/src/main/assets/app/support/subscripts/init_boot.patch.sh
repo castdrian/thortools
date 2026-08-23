@@ -14,13 +14,10 @@ echo "Magisk patch init_boot.img starting..." > $LOG_FILE
 MAGISK_PATH="$1"
 MAGISK_PATCH="$MAGISK_PATH/boot_patch.sh"
 MAGISK_NEWBOOT="$MAGISK_PATH/new-boot.img"
-ACTIVE_SLOT=$(getprop ro.boot.slot_suffix)
-case "$ACTIVE_SLOT" in
-    a) ACTIVE_SLOT="_a" ;;
-    b) ACTIVE_SLOT="_b" ;;
-    _a|_b) ;;
-    *) exit 1 ;;
-esac
+if ! require_active_slot "$2"; then
+    echo "Active slot changed before init_boot patch" >> "$LOG_FILE"
+    exit 2
+fi
 BOOT_IMG="$WORKING_PATH/init_boot$ACTIVE_SLOT.img"
 PATCHED_BOOT="$WORKING_PATH/init_boot_patched$ACTIVE_SLOT.img"
 TEMP_PATCHED_BOOT="$PATCHED_BOOT.tmp"
