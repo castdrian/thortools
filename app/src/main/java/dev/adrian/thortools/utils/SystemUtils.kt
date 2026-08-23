@@ -28,6 +28,12 @@ object SystemUtils {
             .firstOrNull(String::isNotBlank)
             .orEmpty()
 
+        val slot = listOf("ro.boot.slot_suffix", "ro.boot.slot")
+            .asSequence()
+            .map { propertyName -> runCatching { propertyReader(propertyName) }.getOrNull().orEmpty() }
+            .map(DeviceProfile::normalizeSlot)
+            .firstOrNull(String::isNotBlank)
+            .orEmpty()
         return DeviceProperties(
             manufacturer = firstValue("ro.product.manufacturer", "ro.product.vendor.manufacturer", "ro.product.odm.manufacturer"),
             brand = firstValue("ro.product.brand", "ro.product.vendor.brand", "ro.product.odm.brand"),
@@ -44,7 +50,7 @@ object SystemUtils {
             buildDate = firstValue("ro.build.date", "ro.vendor.build.date"),
             buildFingerprint = firstValue("ro.build.fingerprint", "ro.vendor.build.fingerprint", "ro.odm.build.fingerprint"),
             serial = firstValue("ro.serialno", "ro.boot.serialno"),
-            slot = DeviceProfile.normalizeSlot(firstValue("ro.boot.slot_suffix", "ro.boot.slot")),
+            slot = slot,
         )
     }
 

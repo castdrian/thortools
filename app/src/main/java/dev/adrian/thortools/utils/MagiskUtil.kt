@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import android.provider.Settings
 import dev.adrian.thortools.AppSettings
 import java.io.File
 
@@ -37,11 +38,7 @@ object MagiskUtil {
             return enqueueLatestDownload(context)
         }
         return when (state) {
-            MagiskDownloadState.READY -> if (openDownloadedApk(context)) {
-                MagiskActionResult(true, "Opened the completed Magisk installer")
-            } else {
-                MagiskActionResult(false, "The completed Magisk download could not be opened")
-            }
+            MagiskDownloadState.READY -> openDownloadedApk(context)
             MagiskDownloadState.PENDING -> MagiskActionResult(true, "Magisk is still downloading; tap again when the download completes")
             MagiskDownloadState.NONE,
             MagiskDownloadState.FAILED,
@@ -113,14 +110,27 @@ object MagiskUtil {
         AppSettings.getSharedPrefs(context).edit().remove(AppSettings.MAGISK_DOWNLOAD_ID_KEY).commit()
     }
 
-    private fun openDownloadedApk(context: Context): Boolean {
+    private fun openDownloadedApk(context: Context): MagiskActionResult {
         val downloadId = AppSettings.getSharedPrefs(context)
             .getLong(AppSettings.MAGISK_DOWNLOAD_ID_KEY, -1L)
             .takeIf { it > 0L }
-            ?: return false
-        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager ?: return false
-        val uri = runCatching { manager.getUriForDownloadedFile(downloadId) }.getOrNull() ?: return false
-        return runCatching {
+            ?: return MagiskActionResult(false, "The completed Magisk download is no longer available; start it again")
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
+            ?: return MagiskActionResult(false, "Android Download Manager is unavailable")
+        val uri = runCatching { manager.getUriForDownloadedFile(downloadId) }.getOrNull()
+            ?: return MagiskActionResult(false, "The completed Magisk download could not be opened; start it again")
+        if (!context.packageManager.canRequestPackageInstalls()) {
+            runCatching {
+                context.startActivity(
+                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                )
+            }
+            return MagiskActionResult(false, "Allow ThorTools to install Magisk in Android settings, then tap again")
+        }
+        return if (runCatching {
             context.startActivity(
                 Intent(Intent.ACTION_VIEW).apply {
                     setDataAndType(uri, "application/vnd.android.package-archive")
@@ -128,7 +138,11 @@ object MagiskUtil {
                 },
             )
             true
-        }.getOrDefault(false)
+        }.getOrDefault(false)) {
+            MagiskActionResult(true, "Opened the completed Magisk installer")
+        } else {
+            MagiskActionResult(false, "The completed Magisk download could not be opened; start it again")
+        }
     }
 
     fun getMagiskPath(context: Context): String {

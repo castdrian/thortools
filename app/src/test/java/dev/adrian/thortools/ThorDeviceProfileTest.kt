@@ -149,6 +149,19 @@ class ThorDeviceProfileTest {
     }
 
     @Test
+    fun fallsBackWhenThePrimarySlotPropertyIsInvalid() {
+        val values = mapOf(
+            "ro.product.model" to "AYN Thor",
+            "ro.boot.slot_suffix" to "unknown",
+            "ro.boot.slot" to "b",
+        )
+
+        val properties = SystemUtils.getDeviceProperties { values[it].orEmpty() }
+
+        assertEquals("_b", properties.slot)
+    }
+
+    @Test
     fun hidesThorCapabilitiesForDiagnosticsOutsideThor() {
         val snapshot = ThorSnapshot.loading(OperationState()).copy(
             profile = DeviceProfile.detect(DeviceProperties(model = "AYN Loki")).copy(
