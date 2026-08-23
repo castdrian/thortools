@@ -26,10 +26,10 @@ object ThorRecoveryGuidance {
             "The Thor is rooted without a verified stock restore source. Do not update until a stock image is secured."
         snapshot.rooted && snapshot.stockRestoreAvailable ->
             "Keep the verified stock image before OTA or service work, and restore stock before updating."
+        !snapshot.backupAvailable || !snapshot.stockBackupCoverageReady ->
+            "Create verified stock backups for every available slot before preparing a root patch."
         snapshot.patchedBackupAvailable && !snapshot.rooted ->
             "A verified active-slot patch is ready. Review the hashes and flash only the active slot."
-        !snapshot.backupAvailable ->
-            "Create verified stock backups for every available slot before preparing a root patch."
         !snapshot.magiskInstalled ->
             "Install Magisk after the stock backup is verified, then return to EZ Root."
         else ->

@@ -72,7 +72,17 @@ class ThorRecoveryGuidanceTest {
         )
         assertEquals(
             "A verified active-slot patch is ready. Review the hashes and flash only the active slot.",
-            ThorRecoveryGuidance.forSnapshot(snapshot(patchedBackupAvailable = true)),
+            ThorRecoveryGuidance.forSnapshot(snapshot(backupAvailable = true, patchedBackupAvailable = true)),
+        )
+        assertEquals(
+            "Create verified stock backups for every available slot before preparing a root patch.",
+            ThorRecoveryGuidance.forSnapshot(
+                snapshot(
+                    backupAvailable = true,
+                    patchedBackupAvailable = true,
+                    stockBackupSlots = setOf("_a"),
+                ),
+            ),
         )
         assertEquals(
             "Create verified stock backups for every available slot before preparing a root patch.",
@@ -97,6 +107,8 @@ class ThorRecoveryGuidanceTest {
         stockRestoreAvailable: Boolean = backupAvailable,
         patchedBackupAvailable: Boolean = false,
         batteryAvailable: Boolean = true,
+        availableBootSlots: Set<String> = setOf("_a", "_b"),
+        stockBackupSlots: Set<String> = if (backupAvailable) availableBootSlots else emptySet(),
     ): ThorSnapshot {
         return ThorSnapshot(
             profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor")).copy(
@@ -117,6 +129,8 @@ class ThorRecoveryGuidanceTest {
             backupAvailable = backupAvailable,
             stockRestoreAvailable = stockRestoreAvailable,
             patchedBackupAvailable = patchedBackupAvailable,
+            availableBootSlots = availableBootSlots,
+            stockBackupSlots = stockBackupSlots,
             operation = OperationState(),
         )
     }

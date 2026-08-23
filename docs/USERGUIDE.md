@@ -16,7 +16,7 @@ Display and animation controls require the Thor privileged root service. Volume-
 
 The root flow checks the active slot and partition layout before every backup, patch, flash, and restore. The privileged script receives that validated slot, rechecks the image hash and partition capacity immediately before writing, and aborts if the device changes slots while the operation is starting. It requires a 35% battery level, a non-empty image, and an explicit confirmation on the lower display for writes. When both partitions exist, `init_boot` is the explicit recovery target; ThorTools blocks rather than silently falling back to `boot` when that target lacks a verified stock image. A stock backup succeeds only after every discovered slot and its independent Download copy are complete.
 
-Each recovery record is bound to its slot, partition, build fingerprint, file size, and hash. Editing, replacing, or carrying an image across an OTA invalidates it; run **Back up available slots** again after a firmware change.
+Each recovery record is bound to its slot, partition, build fingerprint, file size, and hash. Editing, replacing, or carrying an image across an OTA invalidates it; run **Back up available slots** again after a firmware change. Preparing or flashing a root patch stays blocked until every boot slot currently exposed by the Thor has a verified stock backup.
 
 Flashing is blocked unless a stock active-slot restore source is still available. The patched-cache cleanup action only changes app-local files, including stale or cross-build patched files, and remains available even when the privileged root service is temporarily unavailable.
 

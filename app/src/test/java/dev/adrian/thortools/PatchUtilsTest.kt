@@ -17,6 +17,28 @@ class PatchUtilsTest {
     }
 
     @Test
+    fun reportsCompleteCoverageOnlyForEveryAvailableSlot() {
+        assertTrue(
+            ThorSnapshot.loading(OperationState()).copy(
+                availableBootSlots = setOf("_a", "_b"),
+                stockBackupSlots = setOf("_a", "_b"),
+            ).stockBackupCoverageReady,
+        )
+        assertFalse(
+            ThorSnapshot.loading(OperationState()).copy(
+                availableBootSlots = setOf("_a", "_b"),
+                stockBackupSlots = setOf("_a"),
+            ).stockBackupCoverageReady,
+        )
+        assertFalse(
+            ThorSnapshot.loading(OperationState()).copy(
+                availableBootSlots = emptySet(),
+                stockBackupSlots = setOf("_a", "_b"),
+            ).stockBackupCoverageReady,
+        )
+    }
+
+    @Test
     fun selectPartitionUsesInitBootWhenBothPartitionsExist() {
         assertEquals("init_boot", PatchUtils.selectPartition(initBootAvailable = true, bootAvailable = true))
         assertEquals("init_boot", PatchUtils.selectPartition(initBootAvailable = true, bootAvailable = false))

@@ -204,11 +204,19 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
             DataLine("Build fingerprint", snapshot.profile.properties.buildFingerprint)
             DataLine("Serial", snapshot.profile.properties.serial)
             DataLine("Active slot", snapshot.activeSlot)
+            DataLine("Available boot slots", snapshot.availableBootSlots.sorted().joinToString(", "))
             DataLine("Root service", if (snapshot.rootServiceAvailable) "Available" else "Unavailable")
             DataLine("Root state", if (snapshot.rooted) "Rooted" else "Not rooted")
             DataLine("Magisk", if (snapshot.magiskInstalled) "Installed" else "Not installed")
             DataLine("Recovery target", snapshot.recoveryPartition)
-            DataLine("Stock backups", "${snapshot.stockBackupSlots.size}/2 slots")
+            DataLine(
+                "Stock backups",
+                if (snapshot.availableBootSlots.isEmpty()) {
+                    "Unavailable"
+                } else {
+                    "${snapshot.stockBackupSlots.size}/${snapshot.availableBootSlots.size} slots"
+                },
+            )
             DataLine("Stock restore source", if (snapshot.stockRestoreAvailable) "Available" else "Unavailable")
             DataLine("Patched backups", "${snapshot.patchedBackupSlots.size}/2 slots")
             DataLine("Battery", if (snapshot.batteryPercent > 0) "${snapshot.batteryPercent}%" else "Unavailable")
@@ -461,6 +469,11 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
         actionReady && ThorOperationGuard.validate(snapshot, operation) == null
     val backupReason = if (rootReady) ThorOperationGuard.validate(snapshot, ThorOperation.BACKUP) else null
     val commandModifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+    val backupLabel = if (snapshot.availableBootSlots.isEmpty()) {
+        "Back up available slots"
+    } else {
+        "Back up available slots (${snapshot.stockBackupSlots.size}/${snapshot.availableBootSlots.size} ready)"
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -469,7 +482,7 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
         Text("EZ Root for AYN Thor", style = MaterialTheme.typography.headlineSmall)
         Text("ThorTools checks the active slot and partition layout again before each image operation. Backups are copied to the app folder and Download folder.")
         Button(enabled = operationReady(ThorOperation.INSTALL_MAGISK) && !snapshot.magiskInstalled, onClick = { session.run(operationScope, ThorOperation.INSTALL_MAGISK) }, modifier = commandModifier) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
-        Button(enabled = operationReady(ThorOperation.BACKUP) && snapshot.stockBackupSlots.size < 2, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = commandModifier) { Text("Back up available slots (${snapshot.stockBackupSlots.size}/2 ready)") }
+        Button(enabled = operationReady(ThorOperation.BACKUP) && !snapshot.stockBackupCoverageReady, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = commandModifier) { Text(backupLabel) }
         Button(enabled = operationReady(ThorOperation.PATCH) && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = commandModifier) { Text("Prepare root patch") }
         Button(enabled = operationReady(ThorOperation.FLASH), onClick = { pendingOperation = ThorOperation.FLASH }, modifier = commandModifier) { Text("Flash active-slot patch") }
         Button(enabled = operationReady(ThorOperation.RESTORE), onClick = { pendingOperation = ThorOperation.RESTORE }, modifier = commandModifier) { Text("Restore stock image") }

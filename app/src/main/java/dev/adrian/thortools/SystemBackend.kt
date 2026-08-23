@@ -109,6 +109,7 @@ data class ThorSnapshot(
     val stockRestoreAvailable: Boolean = false,
     val patchedBackupAvailable: Boolean,
     val patchedCacheAvailable: Boolean = false,
+    val availableBootSlots: Set<String> = emptySet(),
     val stockBackupSlots: Set<String> = emptySet(),
     val patchedBackupSlots: Set<String> = emptySet(),
     val operation: OperationState,
@@ -120,6 +121,9 @@ data class ThorSnapshot(
             bootAvailable -> "boot"
             else -> "Unavailable"
         }
+
+    val stockBackupCoverageReady: Boolean
+        get() = availableBootSlots.isNotEmpty() && availableBootSlots.all(stockBackupSlots::contains)
 
     val capabilityRows: List<Pair<String, Boolean>>
         get() = listOf(
@@ -156,6 +160,7 @@ data class ThorSnapshot(
             stockRestoreAvailable = false,
             patchedBackupAvailable = false,
             patchedCacheAvailable = false,
+            availableBootSlots = emptySet(),
             operation = operation,
         )
     }
@@ -213,11 +218,13 @@ object ThorOperationGuard {
                 if (snapshot.rooted) return "The Thor is already rooted; restore stock before preparing another patch"
                 if (!snapshot.magiskInstalled) return "Install Magisk before preparing a root patch"
                 if (!snapshot.backupAvailable) return "Create a verified ${snapshot.recoveryPartition} stock backup before patching"
+                if (!snapshot.stockBackupCoverageReady) return "Create verified stock backups for every available Thor slot before patching"
             }
             ThorOperation.FLASH -> {
                 if (snapshot.rooted) return "The Thor already reports root access; restore stock before flashing again"
                 if (!snapshot.magiskInstalled) return "Install Magisk before flashing a root patch"
                 if (!snapshot.stockRestoreAvailable) return "Keep a verified ${snapshot.recoveryPartition} stock backup before flashing a root patch"
+                if (!snapshot.stockBackupCoverageReady) return "Create verified stock backups for every available Thor slot before flashing"
                 if (!snapshot.patchedBackupAvailable) return "Prepare a Magisk-patched active-slot image first"
             }
             ThorOperation.RESTORE -> {
@@ -243,6 +250,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         val initBoot = rootService && RootUtils.hasPartition(context, "init_boot", properties.slot)
         val boot = rootService && RootUtils.hasPartition(context, "boot", properties.slot)
         val backupDestination = FileUtils.isBackupDestinationWritable(context)
+        val availableBootSlots = PatchUtils.availableBootSlots(context)
         val capabilities = buildSet {
             if (rootService) add(ThorCapability.ROOT_SERVICE)
             if (rooted) add(ThorCapability.ROOTED)
@@ -271,6 +279,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             stockRestoreAvailable = PatchUtils.checkActiveSlotRestoreExists(context),
             patchedBackupAvailable = PatchUtils.checkBootMagiskExists(context),
             patchedCacheAvailable = PatchUtils.hasPatchedCache(context),
+            availableBootSlots = availableBootSlots,
             stockBackupSlots = PatchUtils.stockBackupSlots(context),
             patchedBackupSlots = PatchUtils.patchedBackupSlots(context),
             operation = operation,

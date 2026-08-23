@@ -29,6 +29,10 @@ object PatchUtils {
     internal fun hasCompleteSlotCoverage(requiredSlots: Set<String>, backedUpSlots: Set<String>): Boolean =
         requiredSlots.isNotEmpty() && requiredSlots.all(backedUpSlots::contains)
 
+    fun availableBootSlots(context: Context): Set<String> = slots.filter { slot ->
+        preferredPartition(context, slot) != null
+    }.toSet()
+
     fun stockBackupSlots(context: Context): Set<String> = slots.filter { slot ->
         val partition = preferredPartition(context, slot) ?: return@filter false
         RecoveryManifestStore.hasVerifiedStockImage(
