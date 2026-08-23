@@ -127,7 +127,7 @@ object RecoveryManifestStore {
         downloadPath: String,
         buildIdentity: String,
     ): VerifiedRecoverySource? {
-        val record = find(context, slot, partition, patched = false) ?: return null
+        val record = find(context, slot, partition, patched = false, buildIdentity = buildIdentity) ?: return null
         if (!record.matches(slot, partition, expectedPatched = false, buildIdentity)) return null
         if (verifyPath(context, record, localPath)) return VerifiedRecoverySource(localPath, record.sha256)
         return verifyPath(context, record, downloadPath)
@@ -142,7 +142,7 @@ object RecoveryManifestStore {
         localPath: String,
         buildIdentity: String,
     ): String? {
-        val record = find(context, slot, partition, patched = false) ?: return null
+        val record = find(context, slot, partition, patched = false, buildIdentity = buildIdentity) ?: return null
         if (!record.matches(slot, partition, expectedPatched = false, buildIdentity)) return null
         return record.sha256.takeIf { verifyLocal(record, localPath) }
     }
@@ -171,7 +171,7 @@ object RecoveryManifestStore {
         downloadPath: String,
         buildIdentity: String,
     ): Boolean {
-        val record = find(context, slot, partition, patched = false) ?: return false
+        val record = find(context, slot, partition, patched = false, buildIdentity = buildIdentity) ?: return false
         return record.matches(slot, partition, expectedPatched = false, buildIdentity) &&
             verifyPath(context, record, localPath) &&
             verifyPath(context, record, downloadPath)
@@ -201,7 +201,7 @@ object RecoveryManifestStore {
         stockPath: String,
         buildIdentity: String,
     ): String? {
-        val patched = find(context, slot, partition, patched = true) ?: return null
+        val patched = find(context, slot, partition, patched = true, buildIdentity = buildIdentity) ?: return null
         val stockHash = verifiedStockHash(
             context,
             slot,
@@ -229,10 +229,26 @@ object RecoveryManifestStore {
         )
     }
 
-    private fun find(context: Context, slot: String, partition: String, patched: Boolean): RecoveryImageRecord? =
-        read(context).firstOrNull { record ->
-            record.slot == slot && record.partition == partition && record.patched == patched
-        }
+    private fun find(
+        context: Context,
+        slot: String,
+        partition: String,
+        patched: Boolean,
+        buildIdentity: String,
+    ): RecoveryImageRecord? = selectRecord(read(context), slot, partition, patched, buildIdentity)
+
+    internal fun selectRecord(
+        records: List<RecoveryImageRecord>,
+        slot: String,
+        partition: String,
+        patched: Boolean,
+        buildIdentity: String,
+    ): RecoveryImageRecord? = records.asReversed().firstOrNull { record ->
+        record.slot == slot &&
+            record.partition == partition &&
+            record.patched == patched &&
+            record.buildIdentity == buildIdentity
+    }
 
     private fun verifyLocal(record: RecoveryImageRecord, path: String): Boolean {
         val file = File(path)
