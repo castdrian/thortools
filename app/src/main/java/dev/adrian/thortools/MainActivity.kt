@@ -69,14 +69,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        activityResumed = true
         displayManager?.registerDisplayListener(displayListener, null)
         requestSecondaryDisplay()
     }
 
     override fun onResume() {
         super.onResume()
+        activityResumed = true
         requestSecondaryDisplay()
+    }
+
+    override fun onPause() {
+        activityResumed = false
+        secondaryDisplayRetry?.cancel()
+        secondaryDisplayRetry = null
+        super.onPause()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
