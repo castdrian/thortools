@@ -5,7 +5,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$repo_root/scripts/android-sdk-root.sh"
 sdk_root="$(android_sdk_root)"
-avd_home="$repo_root/.android/avd"
+avd_home="${AYN_THOR_AVD_HOME:-$repo_root/.android/avd}"
 base_config="$repo_root/config/avd/ayn-thor-base.ini"
 
 case "$(uname -m)" in
