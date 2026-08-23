@@ -497,7 +497,7 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
     ) {
         Text("EZ Root for AYN Thor", style = MaterialTheme.typography.headlineSmall)
         Text("ThorTools checks the active slot and partition layout again before each image operation. Backups are copied to the app folder and Download folder.")
-        Button(enabled = operationReady(ThorOperation.INSTALL_MAGISK) && !snapshot.magiskInstalled, onClick = { session.run(operationScope, ThorOperation.INSTALL_MAGISK) }, modifier = commandModifier) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
+        Button(enabled = operationReady(ThorOperation.INSTALL_MAGISK) && !snapshot.magiskInstalled, onClick = { session.run(operationScope, ThorOperation.INSTALL_MAGISK) }, modifier = commandModifier) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download or open Magisk") }
         Button(enabled = operationReady(ThorOperation.BACKUP) && !snapshot.stockBackupCoverageReady, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = commandModifier) { Text(backupLabel) }
         Button(enabled = operationReady(ThorOperation.PATCH) && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = commandModifier) { Text("Prepare root patch") }
         Button(enabled = operationReady(ThorOperation.FLASH), onClick = { pendingOperation = ThorOperation.FLASH }, modifier = commandModifier) { Text("Flash active-slot patch") }

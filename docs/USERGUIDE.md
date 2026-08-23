@@ -10,6 +10,8 @@ The Status section reports the detected Thor variant, raw model information, fir
 
 Display density and animation speed are applied through Android system settings. On a rooted Thor, volume steps and boot-animation behavior are persisted through the ThorTools Magisk module and require a reboot when the dashboard says so.
 
+The EZ Root Magisk action tracks its DownloadManager job across app restarts. Tap it once to download Magisk and tap it again after completion to open the Android installer.
+
 Display and animation controls require the Thor privileged root service. Volume-step and boot-animation controls additionally require Magisk and root access.
 
 ## EZ Root

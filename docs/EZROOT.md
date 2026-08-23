@@ -12,7 +12,7 @@ EZ Root is an on-device workflow for backing up, Magisk-patching, flashing, and 
 ## Workflow
 
 1. Open the EZ Root section on the lower display and review the upper dashboard.
-2. Download and install Magisk if it is not already present.
+2. Choose **Download or open Magisk**. The first tap downloads the current Magisk APK; tap it again after the download completes to open Android's installer.
 3. Choose **Back up available slots**. ThorTools stores every discovered slot image in its app folder, copies each one to `Download`, and shows the exact app-local paths and SHA-256 hashes on both displays.
 4. Choose **Prepare root patch**. ThorTools uses the active slot's `init_boot` image when that partition exists and uses `boot` only when `init_boot` is unavailable; it blocks if the selected target lacks a verified stock image or any currently available slot is missing its stock backup.
 5. Review the displayed image hashes and confirm **Flash active-slot patch**.

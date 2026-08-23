@@ -399,8 +399,8 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         return when (operation) {
             ThorOperation.REFRESH -> OperationResult(true, "System state refreshed")
             ThorOperation.INSTALL_MAGISK -> {
-                val queued = MagiskUtil.enqueueLatestDownload(context)
-                OperationResult(queued, if (queued) "Magisk download started in the Download folder" else "Could not start the Magisk download")
+                val result = MagiskUtil.requestLatestDownloadOrInstall(context)
+                OperationResult(result.success, result.message)
             }
             ThorOperation.BACKUP -> if (PatchUtils.backupBoot(context, current.activeSlot)) {
                 OperationResult(true, "Available Thor boot partitions were backed up")

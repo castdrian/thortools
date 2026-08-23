@@ -27,6 +27,7 @@ object AppSettings {
     const val PENDING_REBOOT_STATUS_KEY = "pendingRebootStatus"
     const val PENDING_REBOOT_BOOT_MARKER_KEY = "pendingRebootBootMarker"
     const val RECOVERY_MANIFEST_KEY = "recoveryManifest"
+    const val MAGISK_DOWNLOAD_ID_KEY = "magiskDownloadId"
 
     fun getSharedPrefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
