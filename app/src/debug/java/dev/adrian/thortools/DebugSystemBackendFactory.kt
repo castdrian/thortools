@@ -1,6 +1,8 @@
 package dev.adrian.thortools
 
 import android.content.Context
+import dev.adrian.thortools.utils.RecoveryImageInput
+import dev.adrian.thortools.utils.RecoveryManifestStore
 import java.io.File
 
 object DebugSystemBackendFactory {
@@ -57,9 +59,13 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         operation = OperationState(),
     )
 
-    override fun snapshot(operation: OperationState): ThorSnapshot = state.copy(operation = operation)
+    override fun snapshot(operation: OperationState): ThorSnapshot {
+        state = stateWithPersistedImages()
+        return state.copy(operation = operation)
+    }
 
     override fun perform(operation: ThorOperation, argument: String?): OperationResult {
+        state = stateWithPersistedImages()
         ThorOperationGuard.validate(state, operation)?.let { return OperationResult(false, it) }
         when (operation) {
             ThorOperation.BACKUP -> {
@@ -87,11 +93,15 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                 profile = state.profile.copy(capabilities = state.profile.capabilities - ThorCapability.ROOTED),
             )
             ThorOperation.CLEAR_CACHE -> {
+                val patchedNames = RecoveryManifestStore.records(context)
+                    .filter { it.patched }
+                    .mapTo(mutableSetOf()) { it.fileName }
                 listOf("boot_patched", "init_boot_patched").forEach { prefix ->
                     listOf("_a", "_b").forEach { slot ->
                         File(context.getExternalFilesDir(null), "$prefix$slot.img").delete()
                     }
                 }
+                RecoveryManifestStore.removePatchedRecords(context, patchedNames)
                 state = state.copy(
                     patchedBackupAvailable = false,
                     patchedCacheAvailable = false,
@@ -118,5 +128,57 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                 File(directory, "$prefix$slot.img").writeText("ThorTools debug image $prefix$slot")
             }
         }
+        val buildIdentity = state.profile.properties.buildIdentity
+        val records = prefixes.flatMap { prefix ->
+            val patched = prefix.endsWith("_patched")
+            val partition = prefix.removeSuffix("_patched")
+            listOf("_a", "_b").map { slot ->
+                val file = File(directory, "$prefix$slot.img")
+                val sourceHash = if (patched) {
+                    RecoveryManifestStore.hashFile(File(directory, "$partition$slot.img").path).orEmpty()
+                } else {
+                    ""
+                }
+                RecoveryImageInput(
+                    fileName = file.name,
+                    slot = slot,
+                    partition = partition,
+                    patched = patched,
+                    path = file.path,
+                    buildIdentity = buildIdentity,
+                    sourceSha256 = sourceHash,
+                )
+            }
+        }
+        RecoveryManifestStore.recordLocalImages(context, records)
+    }
+
+    private fun stateWithPersistedImages(): ThorSnapshot {
+        val stockSlots = persistedSlots(patched = false)
+        val patchedSlots = persistedSlots(patched = true)
+        return state.copy(
+            backupAvailable = state.activeSlot in stockSlots,
+            stockRestoreAvailable = state.activeSlot in stockSlots,
+            patchedBackupAvailable = state.activeSlot in patchedSlots,
+            patchedCacheAvailable = patchedSlots.isNotEmpty(),
+            stockBackupSlots = stockSlots,
+            patchedBackupSlots = patchedSlots,
+        )
+    }
+
+    private fun persistedSlots(patched: Boolean): Set<String> {
+        val directory = context.getExternalFilesDir(null) ?: return emptySet()
+        val buildIdentity = state.profile.properties.buildIdentity
+        return RecoveryManifestStore.records(context)
+            .filter { record ->
+                record.patched == patched &&
+                    record.buildIdentity == buildIdentity &&
+                    record.slot in setOf("_a", "_b")
+            }
+            .filter { record ->
+                val path = File(directory, File(record.fileName).name).path
+                File(path).isFile && File(path).length() == record.size && RecoveryManifestStore.hashFile(path) == record.sha256
+            }
+            .mapTo(mutableSetOf()) { it.slot }
     }
 }

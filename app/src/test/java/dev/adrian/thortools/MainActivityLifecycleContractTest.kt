@@ -42,5 +42,6 @@ class MainActivityLifecycleContractTest {
         assertTrue(presentation.contains("setContentView(composeView)"))
         assertTrue(presentation.contains("configureThorWindow(window)"))
         assertTrue(presentation.contains("contentView?.requestFocusFromTouch()"))
+        assertTrue(presentation.contains("ThorToolsTheme(lowerDisplay = true)"))
     }
 }

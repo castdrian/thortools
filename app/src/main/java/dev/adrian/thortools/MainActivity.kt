@@ -202,7 +202,7 @@ private class ThorPresentation(
             isFocusable = true
             isFocusableInTouchMode = true
             setContent {
-                ThorToolsTheme {
+                ThorToolsTheme(lowerDisplay = true) {
                     ThorControlScreen(session, context, activity.lifecycleScope, isLowerDisplay = true)
                 }
             }

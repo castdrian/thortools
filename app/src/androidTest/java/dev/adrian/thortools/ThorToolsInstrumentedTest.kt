@@ -89,6 +89,39 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun debugBackendPersistsRecoveryManifestStatesForTheDashboard() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val directory = context.getExternalFilesDir(null)
+        preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+        try {
+            listOf(
+                "boot_a.img",
+                "boot_b.img",
+                "init_boot_a.img",
+                "init_boot_b.img",
+                "boot_patched_a.img",
+                "boot_patched_b.img",
+                "init_boot_patched_a.img",
+                "init_boot_patched_b.img",
+            ).forEach { File(directory, it).delete() }
+            val backend = SystemBackendFactory.create(context)
+            assertTrue(backend.perform(ThorOperation.BACKUP).success)
+            val stockRecords = RecoveryManifestStore.records(context).filterNot { it.patched }
+            assertEquals(4, stockRecords.size)
+            assertTrue(stockRecords.all { it.buildIdentity == "AYN/Thor/ThorTools:13/THOR_DEBUG/10001:userdebug/test-keys" })
+            assertTrue(backend.perform(ThorOperation.PATCH).success)
+            val statuses = RecoveryManifestStore.statuses(context, "AYN/Thor/ThorTools:13/THOR_DEBUG/10001:userdebug/test-keys")
+            assertTrue(statuses.any { it.record.patched && it.currentBuild && it.localCopyVerified })
+            assertTrue(backend.perform(ThorOperation.CLEAR_CACHE).success)
+            assertTrue(RecoveryManifestStore.records(context).none { it.patched })
+        } finally {
+            preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+            directory?.listFiles()?.filter { it.name.contains("_a.img") || it.name.contains("_b.img") }?.forEach(File::delete)
+        }
+    }
+
+    @Test
     fun recoveryManifestRejectsTamperingAndBuildChanges() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val preferences = AppSettings.getSharedPrefs(context)
