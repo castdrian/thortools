@@ -149,28 +149,30 @@ class MainActivity : ComponentActivity() {
             if (existing.display.displayId == display.displayId && existing.isShowing) return
             existing.dismiss()
         }
+        hasThorLowerDisplay = false
         val presentation = ThorPresentation(this, display, session)
         secondaryPresentation = presentation
         presentation.setOnDismissListener {
             if (secondaryPresentation === presentation) {
                 secondaryPresentation = null
-                hasThorLowerDisplay = findThorLowerDisplay() != null
+                hasThorLowerDisplay = false
                 scheduleSecondaryDisplayRetry()
             }
         }
         try {
             presentation.show()
+            hasThorLowerDisplay = secondaryPresentation === presentation && presentation.isShowing
         } catch (_: WindowManager.BadTokenException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
-            hasThorLowerDisplay = findThorLowerDisplay() != null
+            hasThorLowerDisplay = false
             scheduleSecondaryDisplayRetry()
         } catch (_: WindowManager.InvalidDisplayException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
-            hasThorLowerDisplay = findThorLowerDisplay() != null
+            hasThorLowerDisplay = false
             scheduleSecondaryDisplayRetry()
         } catch (_: RuntimeException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
-            hasThorLowerDisplay = findThorLowerDisplay() != null
+            hasThorLowerDisplay = false
             scheduleSecondaryDisplayRetry()
         }
     }
