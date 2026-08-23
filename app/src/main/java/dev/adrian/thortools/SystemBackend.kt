@@ -468,9 +468,16 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             ThorOperation.SET_VOLUME_STEPS -> {
                 val value = argument?.toIntOrNull() ?: return OperationResult(false, "Invalid volume step count")
                 if (value !in AppSettings.VOLUME_STEPS_MIN..AppSettings.VOLUME_STEPS_MAX) return OperationResult(false, "Volume steps must be between ${AppSettings.VOLUME_STEPS_MIN} and ${AppSettings.VOLUME_STEPS_MAX}")
-                AppSettings.setVolumeSteps(AppSettings.getSharedPrefs(context), value)
-                val saved = AppSettings.save(context)
-                OperationResult(saved, if (saved) "Volume steps set to $value; reboot required" else "Could not save the volume-step setting", rebootRequired = saved)
+                val prefs = AppSettings.getSharedPrefs(context)
+                val wasConfigured = AppSettings.hasVolumeStepsOverride(prefs)
+                val previousValue = AppSettings.getVolumeSteps(prefs)
+                val saved = AppSettings.setVolumeSteps(prefs, value) && AppSettings.save(context)
+                val rolledBack = saved || AppSettings.restoreVolumeSteps(prefs, wasConfigured, previousValue)
+                OperationResult(saved, when {
+                    saved -> "Volume steps set to $value; reboot required"
+                    rolledBack -> "Could not save the volume-step setting"
+                    else -> "Could not save or restore the volume-step setting"
+                }, rebootRequired = saved)
             }
             ThorOperation.SET_BOOT_ANIMATION -> {
                 val enabled = when (argument) {
@@ -478,11 +485,18 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                     "false" -> false
                     else -> return OperationResult(false, "Invalid boot-animation setting")
                 }
-                AppSettings.setSkipBootAnimation(AppSettings.getSharedPrefs(context), enabled)
-                val saved = AppSettings.save(context)
+                val prefs = AppSettings.getSharedPrefs(context)
+                val wasConfigured = prefs.contains(AppSettings.SKIP_BOOT_ANIMATION_KEY)
+                val previousValue = AppSettings.getSkipBootAnimation(prefs)
+                val saved = AppSettings.setSkipBootAnimation(prefs, enabled) && AppSettings.save(context)
+                val rolledBack = saved || AppSettings.restoreSkipBootAnimation(prefs, wasConfigured, previousValue)
                 OperationResult(saved, if (saved) {
                     if (enabled) "Boot animation disabled; reboot required" else "Boot animation enabled; reboot required"
-                } else "Could not save the boot-animation setting", rebootRequired = saved)
+                } else if (rolledBack) {
+                    "Could not save the boot-animation setting"
+                } else {
+                    "Could not save or restore the boot-animation setting"
+                }, rebootRequired = saved)
             }
         }
     }

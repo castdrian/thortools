@@ -113,15 +113,33 @@ object AppSettings {
     fun getVolumeSteps(sharedPrefs: SharedPreferences, defaultValue: Int = VOLUME_STEPS_DEFAULT): Int =
         sharedPrefs.getInt(VOLUME_STEPS_KEY, defaultValue)
 
-    fun setVolumeSteps(sharedPrefs: SharedPreferences, value: Int) {
+    fun setVolumeSteps(sharedPrefs: SharedPreferences, value: Int): Boolean =
         sharedPrefs.edit().putInt(VOLUME_STEPS_KEY, value.coerceIn(VOLUME_STEPS_MIN, VOLUME_STEPS_MAX)).commit()
+
+    fun restoreVolumeSteps(sharedPrefs: SharedPreferences, wasConfigured: Boolean, value: Int): Boolean {
+        val editor = sharedPrefs.edit()
+        if (wasConfigured) {
+            editor.putInt(VOLUME_STEPS_KEY, value)
+        } else {
+            editor.remove(VOLUME_STEPS_KEY)
+        }
+        return editor.commit()
     }
 
     fun getSkipBootAnimation(sharedPrefs: SharedPreferences): Boolean =
         sharedPrefs.getBoolean(SKIP_BOOT_ANIMATION_KEY, false)
 
-    fun setSkipBootAnimation(sharedPrefs: SharedPreferences, value: Boolean) {
+    fun setSkipBootAnimation(sharedPrefs: SharedPreferences, value: Boolean): Boolean =
         sharedPrefs.edit().putBoolean(SKIP_BOOT_ANIMATION_KEY, value).commit()
+
+    fun restoreSkipBootAnimation(sharedPrefs: SharedPreferences, wasConfigured: Boolean, value: Boolean): Boolean {
+        val editor = sharedPrefs.edit()
+        if (wasConfigured) {
+            editor.putBoolean(SKIP_BOOT_ANIMATION_KEY, value)
+        } else {
+            editor.remove(SKIP_BOOT_ANIMATION_KEY)
+        }
+        return editor.commit()
     }
 
     var allowRootScreen = false

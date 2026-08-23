@@ -397,7 +397,7 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
     val snapshot = session.snapshot
     var dpi by remember(snapshot.lcdDensity) { mutableStateOf(snapshot.lcdDensity.toFloat().coerceIn(AppSettings.DPI_MIN.toFloat(), AppSettings.DPI_MAX.toFloat())) }
     var volumeSteps by remember(snapshot.volumeSteps) { mutableStateOf(snapshot.volumeSteps.toFloat().coerceIn(AppSettings.VOLUME_STEPS_MIN.toFloat(), AppSettings.VOLUME_STEPS_MAX.toFloat())) }
-    var skipBootAnimation by remember { mutableStateOf(AppSettings.getSkipBootAnimation(prefs)) }
+    val skipBootAnimation = AppSettings.getSkipBootAnimation(prefs)
     val enabled = snapshot.profile.isThor && snapshot.rootServiceAvailable
     val actionReady = snapshot.operation.status !in setOf(OperationStatus.RUNNING, OperationStatus.INTERRUPTED)
     val moduleReady = actionReady && ThorOperationGuard.validate(snapshot, ThorOperation.SET_VOLUME_STEPS) == null
@@ -466,7 +466,6 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                         checked = skipBootAnimation,
                         enabled = enabled && actionReady,
                         onCheckedChange = {
-                            skipBootAnimation = it
                             session.run(operationScope, ThorOperation.SET_BOOT_ANIMATION, it.toString())
                         },
                     )

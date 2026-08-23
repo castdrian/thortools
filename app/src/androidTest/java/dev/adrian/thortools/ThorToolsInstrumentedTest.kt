@@ -67,6 +67,45 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun restoresModuleSettingsWithoutCreatingOverridesThatWereAbsent() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val originalVolumeConfigured = preferences.contains(AppSettings.VOLUME_STEPS_KEY)
+        val originalVolume = AppSettings.getVolumeSteps(preferences)
+        val originalBootConfigured = preferences.contains(AppSettings.SKIP_BOOT_ANIMATION_KEY)
+        val originalBoot = AppSettings.getSkipBootAnimation(preferences)
+        try {
+            preferences.edit()
+                .remove(AppSettings.VOLUME_STEPS_KEY)
+                .remove(AppSettings.SKIP_BOOT_ANIMATION_KEY)
+                .commit()
+            AppSettings.setVolumeSteps(preferences, 30)
+            AppSettings.restoreVolumeSteps(preferences, false, 15)
+            assertFalse(preferences.contains(AppSettings.VOLUME_STEPS_KEY))
+            AppSettings.setVolumeSteps(preferences, 30)
+            AppSettings.restoreVolumeSteps(preferences, true, 15)
+            assertEquals(15, AppSettings.getVolumeSteps(preferences))
+            AppSettings.setSkipBootAnimation(preferences, true)
+            AppSettings.restoreSkipBootAnimation(preferences, false, false)
+            assertFalse(preferences.contains(AppSettings.SKIP_BOOT_ANIMATION_KEY))
+            AppSettings.setSkipBootAnimation(preferences, true)
+            AppSettings.restoreSkipBootAnimation(preferences, true, false)
+            assertFalse(AppSettings.getSkipBootAnimation(preferences))
+        } finally {
+            if (originalVolumeConfigured) {
+                AppSettings.setVolumeSteps(preferences, originalVolume)
+            } else {
+                preferences.edit().remove(AppSettings.VOLUME_STEPS_KEY).commit()
+            }
+            if (originalBootConfigured) {
+                AppSettings.setSkipBootAnimation(preferences, originalBoot)
+            } else {
+                preferences.edit().remove(AppSettings.SKIP_BOOT_ANIMATION_KEY).commit()
+            }
+        }
+    }
+
+    @Test
     fun debugBackendPresentsThorCapabilities() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val snapshot = SystemBackendFactory.create(context).snapshot()
