@@ -35,6 +35,8 @@ class RecoveryScriptContractTest {
             assertTrue(source.contains("EXPECTED_SHA256=\"\$3\""))
             assertTrue(source.contains("verify_image_hash \"\$BOOT_IMG\" \"\$EXPECTED_SHA256\""))
             assertTrue(source.contains("changed before patch"))
+            assertTrue(source.contains("changed during patch"))
+            assertTrue(source.contains("rm -f \"\$MAGISK_NEWBOOT\""))
         }
     }
 

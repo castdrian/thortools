@@ -34,6 +34,12 @@ rm -f "$MAGISK_NEWBOOT"
 echo "Patching $BOOT_IMG using $MAGISK_PATCH..." >> $LOG_FILE
 KEEPVERITY=true KEEPFORCEENCRYPT=true sh "$MAGISK_PATCH" "$BOOT_IMG" >> $LOG_FILE
 
+if ! verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256"; then
+    echo "Stock init_boot image changed during patch" >> "$LOG_FILE"
+    rm -f "$MAGISK_NEWBOOT"
+    exit 1
+fi
+
 #MAGISK_OLDBOOT="$MAGISK_PATH/stock-boot.img"
 if [ -s "$MAGISK_NEWBOOT" ]
 then
