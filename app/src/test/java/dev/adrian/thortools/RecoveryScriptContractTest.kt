@@ -164,6 +164,16 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun magiskUtilityCacheRejectsIncompleteExtraction() {
+        val source = File("src/main/java/dev/adrian/thortools/utils/MagiskUtil.kt").readText()
+        assertTrue(source.contains("MAGISK_UTIL_BINARIES"))
+        assertTrue(source.contains("if (!hasLocalMagiskUtils(localDirectory))"))
+        assertTrue(source.contains("MAGISK_UTIL_BINARIES.all"))
+        assertTrue(source.contains("rm -rf \\\"${'$'}{destination.absolutePath}\\\""))
+        assertTrue(source.contains("return localDirectory.absolutePath.takeIf { hasLocalMagiskUtils(localDirectory) } ?: \"\""))
+    }
+
+    @Test
     fun systemTweaksFailClosedWhenPersistenceFails() {
         val settings = File("src/main/java/dev/adrian/thortools/AppSettings.kt").readText()
         val backend = File("src/main/java/dev/adrian/thortools/SystemBackend.kt").readText()

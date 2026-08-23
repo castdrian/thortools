@@ -27,6 +27,7 @@ object MagiskUtil {
     const val MAGISK_ACTIVITY_MAIN = "com.topjohnwu.magisk/com.topjohnwu.magisk.ui.MainActivity"
     private const val MAGISK_DOWNLOAD_URL = "https://github.com/topjohnwu/Magisk/releases/latest/download/Magisk.apk"
     private const val MAGISK_DOWNLOAD_FILE_NAME = "Magisk-ThorTools.apk"
+    private val MAGISK_UTIL_BINARIES = listOf("busybox", "init-ld", "magisk", "magiskboot", "magiskinit", "magiskpolicy")
 
     private fun getMagiskAppPath(context: Context): String = runCatching {
         context.packageManager.getApplicationInfo(MAGISK_PACKAGE_NAME, 0).publicSourceDir
@@ -148,14 +149,12 @@ object MagiskUtil {
     fun getMagiskPath(context: Context): String {
         if (RootUtils.checkFileExistsRoot(context, "$MAGISK_DIR/magisk")) return MAGISK_DIR
         if (!hasMagiskPackage(context)) return ""
-        val localPath = FileUtils.getPathAppFiles(context, "/magisk/magisk")
-        val localMagisk = File(localPath)
-        if (!localMagisk.isFile || localMagisk.length() == 0L) {
-            val temporaryDirectory = FileUtils.getPathAppFiles(context, "/magisk")
-            RootUtils.runRootCommand(context, "rm -rf \"$temporaryDirectory\"")
+        val localDirectory = File(FileUtils.getPathAppFiles(context, "/magisk"))
+        if (!hasLocalMagiskUtils(localDirectory)) {
+            RootUtils.runRootCommand(context, "rm -rf \"${localDirectory.absolutePath}\"")
             installLocalMagiskUtils(context)
         }
-        return if (localMagisk.isFile && localMagisk.length() > 0L) FileUtils.getPathAppFiles(context, "/magisk") else ""
+        return localDirectory.absolutePath.takeIf { hasLocalMagiskUtils(localDirectory) } ?: ""
     }
 
     fun hasMagiskPackage(context: Context): Boolean = RootUtils.isPackageInstalled(context, MAGISK_PACKAGE_NAME)
@@ -169,13 +168,20 @@ object MagiskUtil {
         val destination = File(FileUtils.getPathAppFiles(context, "/magisk"))
         val sourceApk = File(getMagiskAppPath(context))
         if (!sourceApk.exists()) return false
+        RootUtils.runRootCommand(context, "rm -rf \"${destination.absolutePath}\"")
         destination.mkdirs()
         val command = "unzip -o -q \"${sourceApk.absolutePath}\" -d \"${destination.absolutePath}/base\""
-        if (!RootUtils.runRootAction(context, command)) return false
+        if (!RootUtils.runRootAction(context, command)) {
+            RootUtils.runRootCommand(context, "rm -rf \"${destination.absolutePath}\"")
+            return false
+        }
         val sourceRoot = listOf(
             "${destination.absolutePath}/base/lib/arm64-v8a",
             "${destination.absolutePath}/base/lib/arm64",
-        ).firstOrNull { File(it).isDirectory } ?: return false
+        ).firstOrNull { File(it).isDirectory } ?: run {
+            RootUtils.runRootCommand(context, "rm -rf \"${destination.absolutePath}\"")
+            return false
+        }
         val binaries = listOf(
             "libbusybox.so" to "busybox",
             "libinit-ld.so" to "init-ld",
@@ -186,10 +192,20 @@ object MagiskUtil {
         )
         if (!binaries.all { (source, target) ->
                 RootUtils.runRootAction(context, "cp -f \"$sourceRoot/$source\" \"${destination.absolutePath}/$target\"")
-            }) return false
-        if (!RootUtils.runRootAction(context, "chmod a+x \"${destination.absolutePath}\"/*")) return false
-        return binaries.all { (_, target) ->
-            File(destination, target).isFile && File(destination, target).length() > 0
+            }) {
+            RootUtils.runRootCommand(context, "rm -rf \"${destination.absolutePath}\"")
+            return false
         }
+        if (!RootUtils.runRootAction(context, "chmod a+x \"${destination.absolutePath}\"/*")) {
+            RootUtils.runRootCommand(context, "rm -rf \"${destination.absolutePath}\"")
+            return false
+        }
+        return hasLocalMagiskUtils(destination)
     }
+
+    private fun hasLocalMagiskUtils(directory: File): Boolean =
+        MAGISK_UTIL_BINARIES.all { name ->
+            val file = File(directory, name)
+            file.isFile && file.length() > 0L
+        }
 }
