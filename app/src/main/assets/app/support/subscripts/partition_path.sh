@@ -67,3 +67,43 @@ image_fits_partition() {
     esac
     [ "$PARTITION_BYTES" -gt 0 ] && [ "$IMAGE_BYTES" -le "$PARTITION_BYTES" ]
 }
+
+verify_partition_image() {
+    IMAGE_PATH="$1"
+    DEVICE_PATH="$2"
+    [ -s "$IMAGE_PATH" ] || return 1
+    IMAGE_BYTES="$(wc -c < "$IMAGE_PATH" 2>/dev/null | tr -d '[:space:]')"
+    case "$IMAGE_BYTES" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    EXPECTED_HASH="$(sha256sum "$IMAGE_PATH" 2>/dev/null | sed 's/[[:space:]].*$//' | tr '[:upper:]' '[:lower:]')"
+    case "$EXPECTED_HASH" in
+        ''|*[!0-9a-f]*) return 1 ;;
+    esac
+    BLOCK_SIZE=4096
+    FULL_BLOCKS=$((IMAGE_BYTES / BLOCK_SIZE))
+    REMAINDER_BYTES=$((IMAGE_BYTES % BLOCK_SIZE))
+    PREFIX_FILE="$IMAGE_PATH.verify-prefix.tmp"
+    REMAINDER_BLOCK_FILE="$IMAGE_PATH.verify-remainder-block.tmp"
+    REMAINDER_FILE="$IMAGE_PATH.verify-remainder.tmp"
+    rm -f "$PREFIX_FILE" "$REMAINDER_BLOCK_FILE" "$REMAINDER_FILE"
+    : > "$PREFIX_FILE" || return 1
+    : > "$REMAINDER_FILE" || {
+        rm -f "$PREFIX_FILE"
+        return 1
+    }
+    if [ "$FULL_BLOCKS" -gt 0 ] && ! dd if="$DEVICE_PATH" of="$PREFIX_FILE" bs="$BLOCK_SIZE" count="$FULL_BLOCKS" 2>/dev/null; then
+        rm -f "$PREFIX_FILE" "$REMAINDER_BLOCK_FILE" "$REMAINDER_FILE"
+        return 1
+    fi
+    if [ "$REMAINDER_BYTES" -gt 0 ]; then
+        if ! dd if="$DEVICE_PATH" of="$REMAINDER_BLOCK_FILE" bs="$BLOCK_SIZE" skip="$FULL_BLOCKS" count=1 2>/dev/null ||
+            ! dd if="$REMAINDER_BLOCK_FILE" of="$REMAINDER_FILE" bs=1 count="$REMAINDER_BYTES" 2>/dev/null; then
+            rm -f "$PREFIX_FILE" "$REMAINDER_BLOCK_FILE" "$REMAINDER_FILE"
+            return 1
+        fi
+    fi
+    ACTUAL_HASH="$(cat "$PREFIX_FILE" "$REMAINDER_FILE" 2>/dev/null | sha256sum 2>/dev/null | sed 's/[[:space:]].*$//' | tr '[:upper:]' '[:lower:]')"
+    rm -f "$PREFIX_FILE" "$REMAINDER_BLOCK_FILE" "$REMAINDER_FILE"
+    [ "$ACTUAL_HASH" = "$EXPECTED_HASH" ]
+}

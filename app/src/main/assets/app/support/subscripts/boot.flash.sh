@@ -24,8 +24,15 @@ if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && 
     fi
     BOOT_DEVICE="$(resolve_partition "boot$ACTIVE_SLOT")"
     if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE" && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
-        echo "Flash rooted boot.img complete!" >> "$LOG_FILE"
-        exit 0
+        if ! require_active_slot "$1"; then
+            echo "Active slot changed after boot write" >> "$LOG_FILE"
+            exit 2
+        fi
+        if verify_partition_image "$BOOT_IMG" "$BOOT_DEVICE"; then
+            echo "Flash rooted boot.img complete!" >> "$LOG_FILE"
+            exit 0
+        fi
+        echo "Boot partition readback verification failed" >> "$LOG_FILE"
     fi
 fi
 

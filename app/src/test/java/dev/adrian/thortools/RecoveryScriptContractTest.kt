@@ -113,6 +113,21 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun flashAndRestoreScriptsVerifyPartitionReadbackAfterWriting() {
+        val partitionSource = script("partition_path.sh")
+        assertTrue(partitionSource.contains("verify_partition_image()"))
+        assertTrue(partitionSource.contains("PREFIX_FILE=\"\$IMAGE_PATH.verify-prefix.tmp\""))
+        assertTrue(partitionSource.contains("REMAINDER_BLOCK_FILE=\"\$IMAGE_PATH.verify-remainder-block.tmp\""))
+        assertTrue(partitionSource.contains("REMAINDER_FILE=\"\$IMAGE_PATH.verify-remainder.tmp\""))
+        listOf("boot.flash.sh", "init_boot.flash.sh", "boot.restore.sh", "init_boot.restore.sh").forEach { name ->
+            val source = script(name)
+            assertTrue(source.contains("Active slot changed after"))
+            assertTrue(source.contains("verify_partition_image \"\$BOOT_IMG\" \"\$BOOT_DEVICE\""))
+            assertTrue(source.contains("readback verification failed"))
+        }
+    }
+
+    @Test
     fun rootScriptRunnerSharesTheAdvertisedLatestLogPath() {
         val source = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
         assertTrue(source.contains("THORTOOLS_LOG_PATH="))
