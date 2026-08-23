@@ -24,6 +24,8 @@ Flashing is blocked unless a stock active-slot restore source is still available
 
 The lower-screen **Clear patched cache** action removes only Magisk-patched images. Stock backups remain available for restoration, and the restore flow can use the independent `Download` copy if the app-local stock image is unavailable.
 
+While a display, module, cache, or Magisk download operation is running, the lower screen offers **Cancel**. ThorTools records the cancellation as interrupted and requires acknowledgement plus a fresh state review before retrying. Backup, patch, flash, restore, and reboot operations never expose cancellation once started.
+
 ## Recovery
 
 Restore stock before installing an OTA. If the app is interrupted, the next launch shows the interrupted operation in the dashboard without repeating it. Reconnecting the lower display does not restart or duplicate a running operation. Keep the Download-folder copies of the stock images until the Thor has rebooted successfully.

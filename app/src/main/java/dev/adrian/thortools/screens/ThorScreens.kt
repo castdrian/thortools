@@ -91,7 +91,21 @@ fun ThorControlScreen(
                 }
             }
             if (session.snapshot.operation.status == OperationStatus.RUNNING) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    LinearProgressIndicator(modifier = Modifier.weight(1f))
+                    if (session.canCancelCurrentOperation()) {
+                        TextButton(
+                            onClick = { session.cancelCurrentOperation() },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                }
                 Text(
                     text = session.snapshot.operation.message,
                     modifier = Modifier.fillMaxWidth().padding(12.dp),

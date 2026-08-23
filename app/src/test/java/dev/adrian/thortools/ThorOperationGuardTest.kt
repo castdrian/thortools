@@ -1,7 +1,9 @@
 package dev.adrian.thortools
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ThorOperationGuardTest {
@@ -218,6 +220,20 @@ class ThorOperationGuardTest {
             "Root the Thor with Magisk before changing module settings",
             ThorOperationGuard.validate(snapshot(rooted = false), ThorOperation.SET_VOLUME_STEPS),
         )
+    }
+
+    @Test
+    fun onlyNonPartitionOperationsCanBeCancelled() {
+        assertTrue(ThorOperationGuard.canCancel(ThorOperation.SET_DPI))
+        assertTrue(ThorOperationGuard.canCancel(ThorOperation.SET_ANIMATION))
+        assertTrue(ThorOperationGuard.canCancel(ThorOperation.SET_VOLUME_STEPS))
+        assertTrue(ThorOperationGuard.canCancel(ThorOperation.SET_BOOT_ANIMATION))
+        assertTrue(ThorOperationGuard.canCancel(ThorOperation.CLEAR_CACHE))
+        assertFalse(ThorOperationGuard.canCancel(ThorOperation.BACKUP))
+        assertFalse(ThorOperationGuard.canCancel(ThorOperation.PATCH))
+        assertFalse(ThorOperationGuard.canCancel(ThorOperation.FLASH))
+        assertFalse(ThorOperationGuard.canCancel(ThorOperation.RESTORE))
+        assertFalse(ThorOperationGuard.canCancel(ThorOperation.REBOOT))
     }
 
     private fun snapshot(

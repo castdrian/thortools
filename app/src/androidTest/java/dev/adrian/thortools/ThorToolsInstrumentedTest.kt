@@ -524,10 +524,13 @@ class ThorToolsInstrumentedTest {
             session.load()
             session.run(scope, ThorOperation.SET_DPI, "320")
             assertTrue(started.await(5, TimeUnit.SECONDS))
+            assertTrue(session.canCancelCurrentOperation())
+            assertTrue(session.cancelCurrentOperation())
             scope.cancel()
             release.countDown()
             scope.coroutineContext[Job]?.join()
             assertEquals(OperationStatus.INTERRUPTED, session.snapshot.operation.status)
+            assertTrue(session.snapshot.operation.message.contains("cancelled"))
             assertTrue(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
             assertTrue(session.acknowledgeInterruptedOperation())
         } finally {

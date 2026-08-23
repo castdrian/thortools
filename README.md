@@ -19,6 +19,7 @@ The app enters diagnostics-only mode on other devices or when the Thor privilege
 - Stock restore fallback from the independent Download copy
 - Recovery records bound to the active slot, partition, build fingerprint, file size, and source hash
 - Persistent reboot lock after partition or Magisk-module writes
+- Lower-screen cancellation for non-partition operations with recovery journaling
 - Dual-screen AYN Thor AVD and patched emulator compositor
 
 Thor-specific audio changes are intentionally deferred until they have been measured and validated on physical Thor hardware.

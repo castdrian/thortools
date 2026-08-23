@@ -14,8 +14,10 @@ import dev.adrian.thortools.utils.FileUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 import kotlin.math.roundToInt
 
 enum class ThorOperation {
@@ -46,6 +48,16 @@ private val ThorOperation.requiresRebootAfterWrite: Boolean
         ThorOperation.SET_VOLUME_STEPS,
         ThorOperation.SET_BOOT_ANIMATION,
         ThorOperation.REBOOT,
+    )
+
+private val ThorOperation.cancellationSafe: Boolean
+    get() = this in setOf(
+        ThorOperation.INSTALL_MAGISK,
+        ThorOperation.CLEAR_CACHE,
+        ThorOperation.SET_DPI,
+        ThorOperation.SET_ANIMATION,
+        ThorOperation.SET_VOLUME_STEPS,
+        ThorOperation.SET_BOOT_ANIMATION,
     )
 
 enum class OperationStatus {
@@ -235,6 +247,8 @@ object ThorOperationGuard {
         ThorOperation.FLASH,
         ThorOperation.RESTORE,
     )
+
+    fun canCancel(operation: ThorOperation?): Boolean = operation?.cancellationSafe == true
 
     fun validate(snapshot: ThorSnapshot, operation: ThorOperation): String? {
         if (operation.requiresThor && !snapshot.profile.isThor) return "Only an AYN Thor can be modified"
@@ -507,6 +521,7 @@ class ThorSession(
     private val backend: SystemBackend = SystemBackendFactory.create(context),
 ) {
     private val initialOperation = operationFromJournal()
+    private var operationJob: Job? = null
 
     var snapshot by mutableStateOf(ThorSnapshot.loading(initialOperation))
         private set
@@ -597,6 +612,17 @@ class ThorSession(
         return acknowledged
     }
 
+    fun canCancelCurrentOperation(): Boolean =
+        snapshot.operation.status == OperationStatus.RUNNING &&
+            ThorOperationGuard.canCancel(snapshot.operation.operation) &&
+            operationJob?.isActive == true
+
+    fun cancelCurrentOperation(): Boolean {
+        if (!canCancelCurrentOperation()) return false
+        operationJob?.cancel(CancellationException("Operation cancelled by user"))
+        return true
+    }
+
     fun run(scope: CoroutineScope, operation: ThorOperation, argument: String? = null) {
         if (snapshot.operation.status == OperationStatus.RUNNING || hasRecoveryJournal()) return
         ThorOperationGuard.validate(snapshot, operation)?.let { message ->
@@ -619,64 +645,70 @@ class ThorSession(
             return
         }
         snapshot = snapshot.copy(operation = running)
-        scope.launch {
-            val result = try {
-                withContext(Dispatchers.IO) { backend.perform(operation, argument) }
-            } catch (error: CancellationException) {
-                if (snapshot.operation == running) {
-                    val interrupted = running.copy(
-                        status = OperationStatus.INTERRUPTED,
-                        message = if (operation.requiresRebootAfterWrite) {
-                            "Operation interrupted; reboot the Thor before retrying or restoring"
-                        } else {
-                            "Operation interrupted; verify the Thor state before retrying"
-                        },
+        operationJob = scope.launch {
+            try {
+                val result = try {
+                    withContext(Dispatchers.IO) { backend.perform(operation, argument) }
+                } catch (error: CancellationException) {
+                    if (snapshot.operation == running) {
+                        val interrupted = running.copy(
+                            status = OperationStatus.INTERRUPTED,
+                            message = if (error.message == "Operation cancelled by user") {
+                                "Operation cancelled; verify the Thor state before retrying"
+                            } else if (operation.requiresRebootAfterWrite) {
+                                "Operation interrupted; reboot the Thor before retrying or restoring"
+                            } else {
+                                "Operation interrupted; verify the Thor state before retrying"
+                            },
+                            rebootRequired = operation.requiresRebootAfterWrite,
+                        )
+                        persistJournal(interrupted, operationBootMarker)
+                        if (interrupted.rebootRequired) persistPendingReboot(context, interrupted, operationBootMarker)
+                        snapshot = snapshot.copy(operation = interrupted)
+                    }
+                    throw error
+                } catch (error: Throwable) {
+                    OperationResult(
+                        success = false,
+                        message = error.message?.takeIf { it.isNotBlank() } ?: "The operation failed",
                         rebootRequired = operation.requiresRebootAfterWrite,
                     )
-                    persistJournal(interrupted, operationBootMarker)
-                    if (interrupted.rebootRequired) persistPendingReboot(context, interrupted, operationBootMarker)
-                    snapshot = snapshot.copy(operation = interrupted)
                 }
-                throw error
-            } catch (error: Throwable) {
-                OperationResult(
-                    success = false,
-                    message = error.message?.takeIf { it.isNotBlank() } ?: "The operation failed",
-                    rebootRequired = operation.requiresRebootAfterWrite,
+                val finished = OperationState(
+                    operation,
+                    if (result.success) OperationStatus.SUCCESS else OperationStatus.FAILURE,
+                    result.message,
+                    rebootRequired = result.rebootRequired || hasPendingReboot(context),
                 )
-            }
-            val finished = OperationState(
-                operation,
-                if (result.success) OperationStatus.SUCCESS else OperationStatus.FAILURE,
-                result.message,
-                rebootRequired = result.rebootRequired || hasPendingReboot(context),
-            )
-            if (result.rebootRequired) persistJournal(finished, operationBootMarker)
-            val rebootLockSaved = !result.rebootRequired || persistPendingReboot(context, finished, operationBootMarker)
-            val journalCleared = rebootLockSaved && clearJournal()
-            val reported = if (!rebootLockSaved) {
-                val interrupted = OperationState(
-                    operation = operation,
-                    status = OperationStatus.INTERRUPTED,
-                    message = "Operation finished, but its reboot lock could not be saved; reboot the Thor before acknowledging",
-                    rebootRequired = true,
-                )
-                persistJournal(interrupted, operationBootMarker)
-                interrupted
-            } else if (journalCleared) {
-                finished
-            } else {
-                OperationState(
-                    operation = operation,
-                    status = OperationStatus.INTERRUPTED,
-                    message = "Operation finished, but its recovery record could not be cleared; verify the Thor state before acknowledging",
-                    rebootRequired = finished.rebootRequired,
-                )
-            }
-            snapshot = runCatching {
-                withContext(Dispatchers.IO) { backend.snapshot(reported) }
-            }.getOrElse {
-                snapshot.copy(operation = reported)
+                if (result.rebootRequired) persistJournal(finished, operationBootMarker)
+                val rebootLockSaved = !result.rebootRequired || persistPendingReboot(context, finished, operationBootMarker)
+                val journalCleared = rebootLockSaved && clearJournal()
+                val reported = if (!rebootLockSaved) {
+                    val interrupted = OperationState(
+                        operation = operation,
+                        status = OperationStatus.INTERRUPTED,
+                        message = "Operation finished, but its reboot lock could not be saved; reboot the Thor before acknowledging",
+                        rebootRequired = true,
+                    )
+                    persistJournal(interrupted, operationBootMarker)
+                    interrupted
+                } else if (journalCleared) {
+                    finished
+                } else {
+                    OperationState(
+                        operation = operation,
+                        status = OperationStatus.INTERRUPTED,
+                        message = "Operation finished, but its recovery record could not be cleared; verify the Thor state before acknowledging",
+                        rebootRequired = finished.rebootRequired,
+                    )
+                }
+                snapshot = runCatching {
+                    withContext(Dispatchers.IO) { backend.snapshot(reported) }
+                }.getOrElse {
+                    snapshot.copy(operation = reported)
+                }
+            } finally {
+                if (operationJob === coroutineContext[Job]) operationJob = null
             }
         }
     }
