@@ -35,6 +35,8 @@ ANDROID_HOME=/path/to/android-sdk ./gradlew assembleAlpha
 
 The debug APK uses the deterministic fake backend for emulator validation. The alpha APK keeps the real Thor backend; the repository workflow uses a dedicated non-production alpha key when configured and otherwise falls back to the automatic debug key. The emulator validates the dual-screen layout, touch mapping, and UI state. It cannot validate real root services or partition writes. Keep `AYN_THOR_ALLOW_STOCK_EMULATOR=1` limited to UI diagnostics when the patched overlay is unavailable.
 
+Set `AYN_THOR_AVD_HOME` to a directory outside the repository when running the emulator locally to keep its userdata image out of Gradle file snapshots.
+
 After a firmware or OTA change, create a new stock backup before patching or flashing. ThorTools rejects images whose recorded build fingerprint, size, or SHA-256 no longer matches the current device.
 
 ## Release

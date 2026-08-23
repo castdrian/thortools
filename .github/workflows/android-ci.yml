@@ -99,6 +99,7 @@ jobs:
       - name: Start Thor AVD and run instrumented tests
         env:
           AYN_THOR_ALLOW_STOCK_EMULATOR: '1'
+          AYN_THOR_AVD_HOME: ${{ runner.temp }}/thortools-avd
           AYN_THOR_GPU_MODE: swiftshader
           AYN_THOR_WINDOW_SCALE: '1'
         run: |
