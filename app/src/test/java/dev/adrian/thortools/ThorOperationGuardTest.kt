@@ -102,6 +102,30 @@ class ThorOperationGuardTest {
     }
 
     @Test
+    fun requiresCompleteStockCoverageBeforePatchOrFlash() {
+        assertEquals(
+            "Create verified stock backups for every available Thor slot before patching",
+            ThorOperationGuard.validate(
+                snapshot(magiskInstalled = true, backupAvailable = true, stockBackupSlots = setOf("_a")),
+                ThorOperation.PATCH,
+            ),
+        )
+        assertEquals(
+            "Create verified stock backups for every available Thor slot before flashing",
+            ThorOperationGuard.validate(
+                snapshot(
+                    magiskInstalled = true,
+                    backupAvailable = true,
+                    stockRestoreAvailable = true,
+                    patchedBackupAvailable = true,
+                    stockBackupSlots = setOf("_a"),
+                ),
+                ThorOperation.FLASH,
+            ),
+        )
+    }
+
+    @Test
     fun keepsPatchedCacheCleanupAvailableWithoutRootService() {
         assertNull(
             ThorOperationGuard.validate(
@@ -178,6 +202,8 @@ class ThorOperationGuardTest {
         stockRestoreAvailable: Boolean = backupAvailable,
         patchedBackupAvailable: Boolean = false,
         batteryAvailable: Boolean = true,
+        availableBootSlots: Set<String> = setOf("_a", "_b"),
+        stockBackupSlots: Set<String> = if (backupAvailable) availableBootSlots else emptySet(),
     ): ThorSnapshot {
         return ThorSnapshot(
             profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor")).copy(
@@ -199,6 +225,8 @@ class ThorOperationGuardTest {
             stockRestoreAvailable = stockRestoreAvailable,
             patchedBackupAvailable = patchedBackupAvailable,
             patchedCacheAvailable = patchedBackupAvailable,
+            availableBootSlots = availableBootSlots,
+            stockBackupSlots = stockBackupSlots,
             operation = OperationState(),
         )
     }
