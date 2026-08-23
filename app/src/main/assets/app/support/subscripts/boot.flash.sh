@@ -13,10 +13,11 @@ if ! require_active_slot "$1"; then
     echo "Active slot changed before boot flash" >> "$LOG_FILE"
     exit 2
 fi
+EXPECTED_SHA256="$2"
 BOOT_IMG="$WORKING_PATH/boot_patched$ACTIVE_SLOT.img"
 BOOT_DEVICE="$(resolve_partition "boot$ACTIVE_SLOT")"
 
-if [ -n "$BOOT_DEVICE" ] && [ -s "$BOOT_IMG" ] && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
+if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE" && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
     echo "Flash rooted boot.img complete!" >> "$LOG_FILE"
     exit 0
 fi

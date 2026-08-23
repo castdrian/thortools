@@ -27,3 +27,35 @@ require_active_slot() {
     ACTIVE_SLOT="$(normalize_slot "$ACTIVE_PROPERTY")" || return 1
     [ "$ACTIVE_SLOT" = "$EXPECTED_SLOT" ]
 }
+
+verify_image_hash() {
+    IMAGE_PATH="$1"
+    EXPECTED_HASH="$2"
+    case "$EXPECTED_HASH" in
+        ''|*[!0-9a-fA-F]*) return 1 ;;
+    esac
+    ACTUAL_HASH="$(sha256sum "$IMAGE_PATH" 2>/dev/null | sed 's/[[:space:]].*$//' | tr '[:upper:]' '[:lower:]')"
+    [ "$ACTUAL_HASH" = "$(printf '%s' "$EXPECTED_HASH" | tr '[:upper:]' '[:lower:]')" ]
+}
+
+image_fits_partition() {
+    IMAGE_PATH="$1"
+    DEVICE_PATH="$2"
+    [ -s "$IMAGE_PATH" ] || return 1
+    IMAGE_BYTES="$(wc -c < "$IMAGE_PATH" 2>/dev/null | tr -d '[:space:]')"
+    case "$IMAGE_BYTES" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    PARTITION_BYTES="$(blockdev --getsize64 "$DEVICE_PATH" 2>/dev/null | tr -d '[:space:]')"
+    case "$PARTITION_BYTES" in
+        ''|*[!0-9]*|0)
+            DEVICE_NAME="${DEVICE_PATH##*/}"
+            SECTOR_COUNT="$(cat "/sys/class/block/$DEVICE_NAME/size" 2>/dev/null | tr -d '[:space:]')"
+            case "$SECTOR_COUNT" in
+                ''|*[!0-9]*|0) return 1 ;;
+            esac
+            PARTITION_BYTES=$((SECTOR_COUNT * 512))
+            ;;
+    esac
+    [ "$PARTITION_BYTES" -gt 0 ] && [ "$IMAGE_BYTES" -le "$PARTITION_BYTES" ]
+}

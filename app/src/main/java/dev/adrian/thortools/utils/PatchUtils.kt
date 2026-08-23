@@ -132,16 +132,15 @@ object PatchUtils {
         val slot = stableSlot(expectedSlot) ?: return false
         val partition = preferredPartition(context, slot) ?: return false
         val buildIdentity = currentBuildIdentity()
-        if (!RecoveryManifestStore.hasVerifiedPatchedImage(
+        val patchedHash = RecoveryManifestStore.verifiedPatchedHash(
                 context = context,
                 slot = slot,
                 partition = partition,
                 localPath = patchedPath(context, partition, slot),
                 stockPath = stockPath(context, partition, slot),
                 buildIdentity = buildIdentity,
-            )
-        ) return false
-        return RootUtils.runRootScript(context, "$partition.flash.sh", listOf(slot)) == "0"
+            ) ?: return false
+        return RootUtils.runRootScript(context, "$partition.flash.sh", listOf(slot, patchedHash)) == "0"
     }
 
     fun patchBoot(context: Context, expectedSlot: String): String {
@@ -171,7 +170,7 @@ object PatchUtils {
         val slot = stableSlot(expectedSlot) ?: return false
         val partition = preferredPartition(context, slot) ?: return false
         val buildIdentity = currentBuildIdentity()
-        val source = RecoveryManifestStore.verifiedStockSource(
+        val source = RecoveryManifestStore.verifiedStockSourceInfo(
             context = context,
             slot = slot,
             partition = partition,
@@ -179,7 +178,7 @@ object PatchUtils {
             downloadPath = downloadPath(partition, slot),
             buildIdentity = buildIdentity,
         ) ?: return false
-        return RootUtils.runRootScript(context, "$partition.restore.sh", listOf(source, slot)) == "0"
+        return RootUtils.runRootScript(context, "$partition.restore.sh", listOf(source.path, slot, source.sha256)) == "0"
     }
 
     private fun patchPartition(context: Context, partition: String, output: String, magiskPath: String, slot: String): Boolean {

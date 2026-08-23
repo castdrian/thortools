@@ -58,6 +58,20 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun mutatingScriptsVerifyImageHashAndPartitionFitBeforeWriting() {
+        listOf("boot.flash.sh", "init_boot.flash.sh", "boot.restore.sh", "init_boot.restore.sh").forEach { name ->
+            val source = script(name)
+            assertTrue(source.contains("verify_image_hash"))
+            assertTrue(source.contains("image_fits_partition"))
+            assertTrue(source.contains("EXPECTED_SHA256"))
+        }
+        val partitionSource = script("partition_path.sh")
+        assertTrue(partitionSource.contains("sha256sum"))
+        assertTrue(partitionSource.contains("blockdev --getsize64"))
+        assertTrue(partitionSource.contains("/sys/class/block/\$DEVICE_NAME/size"))
+    }
+
+    @Test
     fun patchUtilsPassesValidatedSlotsToMutatingScripts() {
         val patchUtilsSource = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
         assertTrue(patchUtilsSource.contains("fun backupBoot(context: Context, expectedSlot: String)"))
@@ -65,9 +79,9 @@ class RecoveryScriptContractTest {
         assertTrue(patchUtilsSource.contains("fun flashBoot(context: Context, expectedSlot: String)"))
         assertTrue(patchUtilsSource.contains("fun restoreBoot(context: Context, expectedSlot: String)"))
         assertTrue(patchUtilsSource.contains("stableSlot(expectedSlot)"))
-        assertTrue(patchUtilsSource.contains("\"\$partition.flash.sh\", listOf(slot)"))
+        assertTrue(patchUtilsSource.contains("\"\$partition.flash.sh\", listOf(slot, patchedHash)"))
         assertTrue(patchUtilsSource.contains("\"\$partition.patch.sh\", listOf(magiskPath, slot)"))
-        assertTrue(patchUtilsSource.contains("\"\$partition.restore.sh\", listOf(source, slot)"))
+        assertTrue(patchUtilsSource.contains("\"\$partition.restore.sh\", listOf(source.path, slot, source.sha256)"))
     }
 
     private fun script(name: String): String =
