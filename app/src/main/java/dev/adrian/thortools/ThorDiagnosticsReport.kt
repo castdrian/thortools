@@ -41,6 +41,7 @@ object ThorDiagnosticsReport {
         appendLine("initBootAvailable=${snapshot.initBootAvailable}")
         appendLine("bootAvailable=${snapshot.bootAvailable}")
         appendLine("backupDestinationWritable=${snapshot.backupDestinationWritable}")
+        appendLine("stateReadHealthy=${snapshot.stateReadHealthy}")
         appendLine("backupAvailable=${snapshot.backupAvailable}")
         appendLine("stockRestoreAvailable=${snapshot.stockRestoreAvailable}")
         appendLine("patchedBackupAvailable=${snapshot.patchedBackupAvailable}")

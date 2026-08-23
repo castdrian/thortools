@@ -52,6 +52,10 @@ class ThorRecoveryGuidanceTest {
     @Test
     fun explainsRuntimeBlockers() {
         assertEquals(
+            "Thor system state could not be read. Refresh before changing the device.",
+            ThorRecoveryGuidance.forSnapshot(snapshot().copy(stateReadHealthy = false)),
+        )
+        assertEquals(
             "Diagnostics only until the Thor privileged root service is available.",
             ThorRecoveryGuidance.forSnapshot(snapshot(rootServiceAvailable = false)),
         )

@@ -8,6 +8,8 @@ object ThorRecoveryGuidance {
             "Operation in progress. Keep the Thor connected and wait for the result."
         snapshot.operation.status == OperationStatus.INTERRUPTED ->
             "Recovery required: acknowledge the recovery record, verify the active slot and image hashes, then retry when the dashboard is ready."
+        !snapshot.stateReadHealthy ->
+            "Thor system state could not be read. Refresh before changing the device."
         snapshot.operation.rebootRequired ->
             "Reboot the Thor before starting another operation. Wait for the dashboard to read the new boot state."
         snapshot.operation.status == OperationStatus.FAILURE ->

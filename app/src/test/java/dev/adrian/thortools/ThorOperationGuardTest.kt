@@ -36,6 +36,15 @@ class ThorOperationGuardTest {
     }
 
     @Test
+    fun rejectsMutationsWhenTheLatestSystemReadFailed() {
+        assertEquals(
+            "Thor system state is unavailable; refresh before changing the Thor",
+            ThorOperationGuard.validate(snapshot(stateReadHealthy = false), ThorOperation.SET_DPI),
+        )
+        assertNull(ThorOperationGuard.validate(snapshot(stateReadHealthy = false), ThorOperation.REFRESH))
+    }
+
+    @Test
     fun blocksMutationsWhileAnOperationNeedsAttention() {
         assertEquals(
             "Another Thor operation is already in progress",
@@ -249,6 +258,7 @@ class ThorOperationGuardTest {
         stockRestoreAvailable: Boolean = backupAvailable,
         patchedBackupAvailable: Boolean = false,
         batteryAvailable: Boolean = true,
+        stateReadHealthy: Boolean = true,
         availableBootSlots: Set<String> = setOf("_a", "_b"),
         stockBackupSlots: Set<String> = if (backupAvailable) availableBootSlots else emptySet(),
     ): ThorSnapshot {
@@ -275,6 +285,7 @@ class ThorOperationGuardTest {
             availableBootSlots = availableBootSlots,
             stockBackupSlots = stockBackupSlots,
             operation = OperationState(),
+            stateReadHealthy = stateReadHealthy,
         )
     }
 }

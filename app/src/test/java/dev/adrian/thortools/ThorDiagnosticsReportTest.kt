@@ -53,6 +53,7 @@ class ThorDiagnosticsReportTest {
         assertTrue(report.contains("operation=FLASH"))
         assertTrue(report.contains("operationStatus=FAILURE"))
         assertTrue(report.contains("operationRebootRequired=true"))
+        assertTrue(report.contains("stateReadHealthy=true"))
         assertTrue(report.contains("display.upper.width=1920"))
         assertTrue(report.contains("display.lower.width=1240"))
         assertTrue(report.contains("recovery[0].sha256=stock-hash"))

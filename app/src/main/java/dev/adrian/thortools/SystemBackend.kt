@@ -137,6 +137,7 @@ data class ThorSnapshot(
     val patchedBackupSlots: Set<String> = emptySet(),
     val operation: OperationState,
     val displayDiagnostics: ThorDisplayDiagnostics = ThorDisplayDiagnostics(),
+    val stateReadHealthy: Boolean = true,
 ) {
     val recoveryPartition: String
         get() = when {
@@ -151,6 +152,7 @@ data class ThorSnapshot(
     val capabilityRows: List<Pair<String, Boolean>>
         get() = listOf(
             "Thor device" to profile.isThor,
+            "System state" to stateReadHealthy,
             "Root service" to supportsThorCapability(ThorCapability.ROOT_SERVICE),
             "Root access" to supportsThorCapability(ThorCapability.ROOTED),
             "Magisk" to supportsThorCapability(ThorCapability.MAGISK),
@@ -253,6 +255,9 @@ object ThorOperationGuard {
 
     fun validate(snapshot: ThorSnapshot, operation: ThorOperation): String? {
         if (operation.requiresThor && !snapshot.profile.isThor) return "Only an AYN Thor can be modified"
+        if (operation != ThorOperation.REFRESH && !snapshot.stateReadHealthy) {
+            return "Thor system state is unavailable; refresh before changing the Thor"
+        }
         if (operation != ThorOperation.REFRESH && snapshot.operation.status == OperationStatus.RUNNING) {
             return "Another Thor operation is already in progress"
         }
@@ -555,7 +560,7 @@ class ThorSession(
         snapshot = runCatching {
             withContext(Dispatchers.IO) { backend.snapshot(initialOperation) }
         }.getOrElse {
-            ThorSnapshot.loading(initialOperation.copy(status = OperationStatus.FAILURE, message = "Could not read Thor system state"))
+            failedSnapshot(initialOperation)
         }
     }
 
@@ -572,8 +577,25 @@ class ThorSession(
         snapshot = runCatching {
             withContext(Dispatchers.IO) { backend.snapshot(refreshedOperation) }
         }.getOrElse {
-            snapshot.copy(operation = refreshedOperation)
+            failedSnapshot(refreshedOperation)
         }
+    }
+
+    private fun failedSnapshot(operation: OperationState): ThorSnapshot {
+        val interrupted = operation.status == OperationStatus.INTERRUPTED
+        val failedOperation = operation.copy(
+            operation = operation.operation ?: ThorOperation.REFRESH,
+            status = if (interrupted) OperationStatus.INTERRUPTED else OperationStatus.FAILURE,
+            message = if (interrupted) {
+                "Recovery record remains; current Thor state could not be read. Refresh before acknowledging."
+            } else {
+                "Could not read current Thor state; refresh before changing the Thor."
+            },
+        )
+        return ThorSnapshot.loading(failedOperation).copy(
+            profile = snapshot.profile.copy(capabilities = emptySet()),
+            stateReadHealthy = false,
+        )
     }
 
     fun acknowledgeInterruptedOperation(): Boolean {
