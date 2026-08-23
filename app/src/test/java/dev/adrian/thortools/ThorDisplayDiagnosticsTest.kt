@@ -34,4 +34,26 @@ class ThorDisplayDiagnosticsTest {
         assertEquals("Unavailable", diagnostics.lower.geometryLabel)
         assertEquals("Unavailable", diagnostics.lower.refreshRateLabel)
     }
+
+    @Test
+    fun onlyReportsDualDisplayReadyForDistinctThorPanels() {
+        assertFalse(
+            ThorDisplayDiagnostics(
+                upper = ThorDisplayPanel(0, 1920, 1080, 120f, 0),
+                lower = ThorDisplayPanel(0, 1240, 1080, 60f, 0),
+            ).dualDisplayReady,
+        )
+        assertFalse(
+            ThorDisplayDiagnostics(
+                upper = ThorDisplayPanel(0, 1920, 1080, 120f, 1),
+                lower = ThorDisplayPanel(1, 1240, 1080, 60f, 0),
+            ).dualDisplayReady,
+        )
+        assertFalse(
+            ThorDisplayDiagnostics(
+                upper = ThorDisplayPanel(0, 1920, 1080, 120f, 0),
+                lower = ThorDisplayPanel(1, 1240, 1240, 60f, 0),
+            ).dualDisplayReady,
+        )
+    }
 }
