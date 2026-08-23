@@ -91,6 +91,11 @@ class MainActivity : ComponentActivity() {
         requestSecondaryDisplay()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) configureThorWindow(window)
+    }
+
     override fun onStop() {
         activityResumed = false
         secondaryDisplayRetry?.cancel()
@@ -164,8 +169,11 @@ private class ThorPresentation(
     display: Display,
     private val session: ThorSession,
 ) : Presentation(activity, display) {
+    private var contentView: ComposeView? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setCancelable(false)
         configureThorWindow(window)
         window?.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
         val composeView = ComposeView(context).apply {
@@ -180,9 +188,23 @@ private class ThorPresentation(
                 }
             }
         }
+        contentView = composeView
         setContentView(composeView)
+        configureThorWindow(window)
+        window?.decorView?.isFocusable = true
+        window?.decorView?.isFocusableInTouchMode = true
         window?.takeKeyEvents(true)
+        window?.decorView?.requestFocusFromTouch()
         composeView.requestFocusFromTouch()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            configureThorWindow(window)
+            window?.takeKeyEvents(true)
+            contentView?.requestFocusFromTouch()
+        }
     }
 }
 
