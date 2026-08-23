@@ -387,6 +387,14 @@ class ThorSession(
             val result = try {
                 withContext(Dispatchers.IO) { backend.perform(operation, argument) }
             } catch (error: CancellationException) {
+                if (snapshot.operation == running) {
+                    snapshot = snapshot.copy(
+                        operation = running.copy(
+                            status = OperationStatus.INTERRUPTED,
+                            message = "Operation interrupted; verify the Thor state before retrying",
+                        ),
+                    )
+                }
                 throw error
             } catch (error: Throwable) {
                 OperationResult(false, error.message?.takeIf { it.isNotBlank() } ?: "The operation failed")
