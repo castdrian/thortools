@@ -304,7 +304,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
     private fun Display.toThorDisplayPanel(): ThorDisplayPanel? {
         val currentMode = modeOrNull() ?: return null
         val displayRotation = rotationOrNull() ?: return null
-        ThorDisplayPanel(
+        return ThorDisplayPanel(
             displayId = displayId,
             widthPixels = currentMode.physicalWidth,
             heightPixels = currentMode.physicalHeight,
