@@ -14,7 +14,7 @@ class BootReceiver : BroadcastReceiver() {
         thread(name = "ThorToolsBoot") {
             try {
                 if (!DeviceProfile.detect(SystemUtils.getDeviceProperties()).isThor ||
-                    !awaitRootService({ RootUtils.hasPServer() }, ::sleepForRootService)
+                    !awaitRootService({ RootUtils.isPServerResponsive() }, ::sleepForRootService)
                 ) return@thread
                 val prefs = AppSettings.getSharedPrefs(context)
                 if (AppSettings.hasDpiOverride(prefs)) {

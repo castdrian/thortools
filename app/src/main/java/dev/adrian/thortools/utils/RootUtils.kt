@@ -72,6 +72,9 @@ object RootUtils {
 
     fun hasPServer(): Boolean = RootExec().pServerAvailable
 
+    fun isPServerResponsive(): Boolean =
+        RootExec().executeAsRoot("printf '%s' 1").getOrNull() == "1"
+
     fun isDeviceRooted(context: Context, rootServiceAvailable: Boolean): Boolean {
         if (!rootServiceAvailable) return isDeviceRooted
         val activeRoot = runRootCommand(

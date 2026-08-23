@@ -335,7 +335,7 @@ object ThorOperationGuard {
 class RealSystemBackend(private val context: Context) : SystemBackend {
     override fun snapshot(operation: OperationState): ThorSnapshot {
         val properties = SystemUtils.getDeviceProperties()
-        val rootService = RootUtils.hasPServer()
+        val rootService = RootUtils.isPServerResponsive()
         val rooted = RootUtils.isDeviceRooted(context, rootService)
         val magisk = MagiskUtil.hasMagiskPackage(context)
         val battery = SystemUtils.getBatteryPercent(context)

@@ -138,6 +138,19 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun rootServiceReadinessRequiresAWorkingPrivilegedCommand() {
+        val rootUtils = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
+        val backend = File("src/main/java/dev/adrian/thortools/SystemBackend.kt").readText()
+        val receiver = File("src/main/java/dev/adrian/thortools/BootReceiver.kt").readText()
+        val patchUtils = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
+        assertTrue(rootUtils.contains("fun isPServerResponsive(): Boolean"))
+        assertTrue(rootUtils.contains("executeAsRoot(\"printf '%s' 1\")"))
+        assertTrue(backend.contains("val rootService = RootUtils.isPServerResponsive()"))
+        assertTrue(receiver.contains("RootUtils.isPServerResponsive()"))
+        assertTrue(patchUtils.contains("if (!RootUtils.isPServerResponsive()"))
+    }
+
+    @Test
     fun backupCombinesInitBootAndBootResultsInOneLog() {
         val source = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
         assertTrue(source.contains("var clearLog = true"))

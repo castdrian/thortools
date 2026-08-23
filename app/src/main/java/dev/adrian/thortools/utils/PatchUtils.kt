@@ -15,7 +15,7 @@ object PatchUtils {
 
     fun backupBoot(context: Context, expectedSlot: String): Boolean {
         val slot = stableSlot(expectedSlot) ?: return false
-        if (!RootUtils.hasPServer() || !FileUtils.isBackupDestinationWritable(context)) return false
+        if (!RootUtils.isPServerResponsive() || !FileUtils.isBackupDestinationWritable(context)) return false
         val initBootRequired = slots.any { RootUtils.hasPartition(context, "init_boot", it) }
         val bootRequired = slots.any { RootUtils.hasPartition(context, "boot", it) }
         val requiredSlots = slots.filter { slot ->
