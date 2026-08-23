@@ -28,6 +28,8 @@ object MagiskUtil {
     private const val MAGISK_DOWNLOAD_URL = "https://github.com/topjohnwu/Magisk/releases/latest/download/Magisk.apk"
     private const val MAGISK_DOWNLOAD_FILE_NAME = "Magisk-ThorTools.apk"
     private val MAGISK_UTIL_BINARIES = listOf("busybox", "init-ld", "magisk", "magiskboot", "magiskinit", "magiskpolicy")
+    private val MAGISK_UTIL_SUPPORT_FILES = listOf("boot_patch.sh", "util_functions.sh", "stub.apk")
+    private val MAGISK_REQUIRED_FILES = MAGISK_UTIL_BINARIES + MAGISK_UTIL_SUPPORT_FILES
 
     private fun getMagiskAppPath(context: Context): String = runCatching {
         context.packageManager.getApplicationInfo(MAGISK_PACKAGE_NAME, 0).publicSourceDir
@@ -147,7 +149,7 @@ object MagiskUtil {
     }
 
     fun getMagiskPath(context: Context): String {
-        if (RootUtils.checkFileExistsRoot(context, "$MAGISK_DIR/magisk")) return MAGISK_DIR
+        if (hasRootMagiskUtils(context)) return MAGISK_DIR
         if (!hasMagiskPackage(context)) return ""
         val localDirectory = File(FileUtils.getPathAppFiles(context, "/magisk"))
         if (!hasLocalMagiskUtils(localDirectory)) {
@@ -167,7 +169,7 @@ object MagiskUtil {
     fun installLocalMagiskUtils(context: Context): Boolean {
         val destination = File(FileUtils.getPathAppFiles(context, "/magisk"))
         val sourceApk = File(getMagiskAppPath(context))
-        if (!sourceApk.exists()) return false
+        if (!sourceApk.isFile) return false
         RootUtils.runRootCommand(context, "rm -rf \"${destination.absolutePath}\"")
         destination.mkdirs()
         val command = "unzip -o -q \"${sourceApk.absolutePath}\" -d \"${destination.absolutePath}/base\""
@@ -196,6 +198,17 @@ object MagiskUtil {
             RootUtils.runRootCommand(context, "rm -rf \"${destination.absolutePath}\"")
             return false
         }
+        val supportFiles = listOf(
+            "assets/boot_patch.sh" to "boot_patch.sh",
+            "assets/util_functions.sh" to "util_functions.sh",
+            "assets/stub.apk" to "stub.apk",
+        )
+        if (!supportFiles.all { (source, target) ->
+                RootUtils.runRootAction(context, "cp -f \"${destination.absolutePath}/base/$source\" \"${destination.absolutePath}/$target\"")
+            }) {
+            RootUtils.runRootCommand(context, "rm -rf \"${destination.absolutePath}\"")
+            return false
+        }
         if (!RootUtils.runRootAction(context, "chmod a+x \"${destination.absolutePath}\"/*")) {
             RootUtils.runRootCommand(context, "rm -rf \"${destination.absolutePath}\"")
             return false
@@ -203,8 +216,13 @@ object MagiskUtil {
         return hasLocalMagiskUtils(destination)
     }
 
+    private fun hasRootMagiskUtils(context: Context): Boolean =
+        MAGISK_REQUIRED_FILES.all { name ->
+            RootUtils.checkFileNonEmptyRoot(context, "$MAGISK_DIR/$name")
+        }
+
     private fun hasLocalMagiskUtils(directory: File): Boolean =
-        MAGISK_UTIL_BINARIES.all { name ->
+        MAGISK_REQUIRED_FILES.all { name ->
             val file = File(directory, name)
             file.isFile && file.length() > 0L
         }

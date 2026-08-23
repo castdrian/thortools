@@ -167,8 +167,14 @@ class RecoveryScriptContractTest {
     fun magiskUtilityCacheRejectsIncompleteExtraction() {
         val source = File("src/main/java/dev/adrian/thortools/utils/MagiskUtil.kt").readText()
         assertTrue(source.contains("MAGISK_UTIL_BINARIES"))
+        assertTrue(source.contains("MAGISK_UTIL_SUPPORT_FILES"))
+        assertTrue(source.contains("MAGISK_REQUIRED_FILES = MAGISK_UTIL_BINARIES + MAGISK_UTIL_SUPPORT_FILES"))
+        assertTrue(source.contains("if (hasRootMagiskUtils(context)) return MAGISK_DIR"))
         assertTrue(source.contains("if (!hasLocalMagiskUtils(localDirectory))"))
-        assertTrue(source.contains("MAGISK_UTIL_BINARIES.all"))
+        assertTrue(source.contains("MAGISK_REQUIRED_FILES.all"))
+        assertTrue(source.contains("assets/boot_patch.sh"))
+        assertTrue(source.contains("assets/util_functions.sh"))
+        assertTrue(source.contains("assets/stub.apk"))
         assertTrue(source.contains("rm -rf \\\"${'$'}{destination.absolutePath}\\\""))
         assertTrue(source.contains("return localDirectory.absolutePath.takeIf { hasLocalMagiskUtils(localDirectory) } ?: \"\""))
     }
