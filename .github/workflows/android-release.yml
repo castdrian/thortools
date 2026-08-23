@@ -21,6 +21,7 @@ on:
           - stable
 
 permissions:
+  actions: read
   contents: write
 
 env:
@@ -58,6 +59,18 @@ jobs:
 
       - name: Set up Gradle caching
         uses: gradle/actions/setup-gradle@v6
+
+      - name: Verify tag is validated on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$RELEASE_COMMIT" origin/main
+          ci_run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow android-ci.yml --commit "$RELEASE_COMMIT" --limit 20 --json databaseId,status,conclusion --jq 'map(select(.status == "completed" and .conclusion == "success")) | .[0].databaseId // empty')"
+          test -n "$ci_run_id"
+          ci_jobs="$(gh run view "$ci_run_id" --repo "$GITHUB_REPOSITORY" --json jobs --jq '[.jobs[] | select(.name == "validate" or .name == "instrumented") | .conclusion] | sort | join(",")')"
+          test "$ci_jobs" = "success,success"
 
       - name: Prepare release version
         id: release
@@ -202,7 +215,9 @@ jobs:
           release_apk="$(find "app/build/outputs/apk/$BUILD_TYPE" -type f -name 'thortools-*.apk' -print -quit)"
           test -n "$release_apk"
           cp "$release_apk" "$RUNNER_TEMP/$apk_name"
+          sha256sum "$RUNNER_TEMP/$apk_name" > "$RUNNER_TEMP/$apk_name.sha256"
           echo "path=$RUNNER_TEMP/$apk_name" >> "$GITHUB_OUTPUT"
+          echo "checksum=$RUNNER_TEMP/$apk_name.sha256" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
         id: notes
@@ -263,7 +278,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: thortools-release
-          path: ${{ steps.apk.outputs.path }}
+          path: |
+            ${{ steps.apk.outputs.path }}
+            ${{ steps.apk.outputs.checksum }}
 
       - name: Publish GitHub release
         env:
@@ -271,6 +288,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           RELEASE_NOTES_PATH: ${{ steps.notes.outputs.path }}
           RELEASE_APK_PATH: ${{ steps.apk.outputs.path }}
+          RELEASE_CHECKSUM_PATH: ${{ steps.apk.outputs.checksum }}
           RELEASE_PRERELEASE: ${{ steps.release.outputs.prerelease }}
         run: |
           release_args=(
@@ -283,4 +301,4 @@ jobs:
           if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
             release_args+=(--prerelease)
           fi
-          gh release create "$RELEASE_TAG" "$RELEASE_APK_PATH" "${release_args[@]}"
+          gh release create "$RELEASE_TAG" "$RELEASE_APK_PATH" "$RELEASE_CHECKSUM_PATH" "${release_args[@]}"

@@ -42,7 +42,7 @@ After a firmware or OTA change, create a new stock backup before patching or fla
 
 ## Release
 
-Release tags use `vMAJOR.MINOR.PATCH-alpha.N`, `vMAJOR.MINOR.PATCH-beta.N`, or `vMAJOR.MINOR.PATCH`. Alpha releases build the real Thor backend without production signing; this repository uses an optional dedicated ThorTools Alpha key so alpha updates install over one another, while forks without that secret fall back to the automatic debug key. Beta and stable releases use the production keystore and are uploaded as `thortools-<tag>.apk`.
+Release tags use `vMAJOR.MINOR.PATCH-alpha.N`, `vMAJOR.MINOR.PATCH-beta.N`, or `vMAJOR.MINOR.PATCH`. Alpha releases build the real Thor backend without production signing; this repository uses an optional dedicated ThorTools Alpha key so alpha updates install over one another, while forks without that secret fall back to the automatic debug key. Beta and stable releases use the production keystore and are uploaded as `thortools-<tag>.apk` with a matching `.sha256` checksum file. Release packaging only accepts commits already present on `main` with successful Android CI.
 
 Do not promote an alpha without completing the [physical Thor validation checklist](docs/PHYSICAL_VALIDATION.md) on both a Snapdragon 865 Thor Lite and a Snapdragon 8 Gen 2 Thor.
 
