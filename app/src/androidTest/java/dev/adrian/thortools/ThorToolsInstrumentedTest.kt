@@ -231,7 +231,8 @@ class ThorToolsInstrumentedTest {
     fun recoveryManifestStatusLabelsTheCurrentVerifiedCopy() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val preferences = AppSettings.getSharedPrefs(context)
-        val image = File(context.getExternalFilesDir(null), "recovery-status-test.img")
+        val image = File(context.getExternalFilesDir(null), "recovery-status-test-${System.currentTimeMillis()}.img")
+        val download = File(FileUtils.getPathDownload("/${image.name}"))
         preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
         try {
             image.writeText("stock")
@@ -253,6 +254,17 @@ class ThorToolsInstrumentedTest {
             var status = RecoveryManifestStore.statuses(context, "current-fingerprint").single()
             assertTrue(status.currentBuild)
             assertTrue(status.localCopyVerified)
+            assertFalse(status.downloadCopyVerified)
+            assertFalse(
+                RecoveryManifestStore.hasVerifiedStockCopies(
+                    context,
+                    "_a",
+                    "boot",
+                    image.path,
+                    download.path,
+                    "current-fingerprint",
+                ),
+            )
             assertEquals(image.path, status.localPath)
             assertEquals(FileUtils.getPathDownload("/${image.name}"), status.downloadPath)
             image.writeText("tampered")
@@ -261,6 +273,7 @@ class ThorToolsInstrumentedTest {
         } finally {
             preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
             image.delete()
+            download.delete()
         }
     }
 

@@ -35,7 +35,7 @@ object PatchUtils {
 
     fun stockBackupSlots(context: Context): Set<String> = slots.filter { slot ->
         val partition = preferredPartition(context, slot) ?: return@filter false
-        RecoveryManifestStore.hasVerifiedStockImage(
+        RecoveryManifestStore.hasVerifiedStockCopies(
             context = context,
             slot = slot,
             partition = partition,

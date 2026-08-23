@@ -163,6 +163,20 @@ object RecoveryManifestStore {
         buildIdentity,
     ) != null
 
+    fun hasVerifiedStockCopies(
+        context: Context,
+        slot: String,
+        partition: String,
+        localPath: String,
+        downloadPath: String,
+        buildIdentity: String,
+    ): Boolean {
+        val record = find(context, slot, partition, patched = false) ?: return false
+        return record.matches(slot, partition, expectedPatched = false, buildIdentity) &&
+            verifyPath(context, record, localPath) &&
+            verifyPath(context, record, downloadPath)
+    }
+
     fun hasVerifiedPatchedImage(
         context: Context,
         slot: String,
