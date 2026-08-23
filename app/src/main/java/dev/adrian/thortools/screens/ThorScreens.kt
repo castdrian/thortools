@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -93,7 +94,7 @@ fun ThorControlScreen(
             if (session.snapshot.operation.status == OperationStatus.INTERRUPTED) {
                 TextButton(
                     onClick = { session.acknowledgeInterruptedOperation() },
-                    modifier = Modifier.align(Alignment.End).padding(horizontal = 12.dp),
+                    modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp).padding(horizontal = 12.dp),
                 ) {
                     Text("Acknowledge recovery record")
                 }
@@ -101,7 +102,7 @@ fun ThorControlScreen(
             if (section == ThorSection.STATUS) {
                 TextButton(
                     onClick = { operationScope.launch { session.refresh() } },
-                    modifier = Modifier.align(Alignment.End).padding(horizontal = 12.dp),
+                    modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp).padding(horizontal = 12.dp),
                 ) {
                     Text("Refresh")
                 }
@@ -149,11 +150,11 @@ private fun ControlHeader(snapshot: ThorSnapshot, section: ThorSection, onSectio
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             ThorSection.entries.forEach { candidate ->
                 if (candidate == section) {
-                    Button(onClick = { onSection(candidate) }, modifier = Modifier.weight(1f)) {
+                    Button(onClick = { onSection(candidate) }, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) {
                         Text(candidate.label())
                     }
                 } else {
-                    OutlinedButton(onClick = { onSection(candidate) }, modifier = Modifier.weight(1f)) {
+                    OutlinedButton(onClick = { onSection(candidate) }, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) {
                         Text(candidate.label())
                     }
                 }
@@ -358,7 +359,11 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                 Text("Animation speed: ${snapshot.animationSpeed}x")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1f, 0.5f, 0f).forEach { value ->
-                        OutlinedButton(enabled = enabled && actionReady, onClick = { session.run(operationScope, ThorOperation.SET_ANIMATION, value.toString()) }) {
+                        OutlinedButton(
+                            enabled = enabled && actionReady,
+                            onClick = { session.run(operationScope, ThorOperation.SET_ANIMATION, value.toString()) },
+                            modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                        ) {
                             Text(if (value == 0f) "Off" else "${value}x")
                         }
                     }
@@ -415,6 +420,7 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
     fun operationReady(operation: ThorOperation): Boolean =
         actionReady && ThorOperationGuard.validate(snapshot, operation) == null
     val backupReason = if (rootReady) ThorOperationGuard.validate(snapshot, ThorOperation.BACKUP) else null
+    val commandModifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
 
     Column(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -422,13 +428,13 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
     ) {
         Text("EZ Root for AYN Thor", style = MaterialTheme.typography.headlineSmall)
         Text("ThorTools checks the active slot and partition layout again before each image operation. Backups are copied to the app folder and Download folder.")
-        Button(enabled = operationReady(ThorOperation.INSTALL_MAGISK) && !snapshot.magiskInstalled, onClick = { session.run(operationScope, ThorOperation.INSTALL_MAGISK) }, modifier = Modifier.fillMaxWidth()) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
-        Button(enabled = operationReady(ThorOperation.BACKUP) && snapshot.stockBackupSlots.size < 2, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = Modifier.fillMaxWidth()) { Text("Back up available slots (${snapshot.stockBackupSlots.size}/2 ready)") }
-        Button(enabled = operationReady(ThorOperation.PATCH) && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = Modifier.fillMaxWidth()) { Text("Prepare root patch") }
-        Button(enabled = operationReady(ThorOperation.FLASH), onClick = { pendingOperation = ThorOperation.FLASH }, modifier = Modifier.fillMaxWidth()) { Text("Flash active-slot patch") }
-        Button(enabled = operationReady(ThorOperation.RESTORE), onClick = { pendingOperation = ThorOperation.RESTORE }, modifier = Modifier.fillMaxWidth()) { Text("Restore stock image") }
-        OutlinedButton(enabled = operationReady(ThorOperation.REBOOT), onClick = { pendingOperation = ThorOperation.REBOOT }, modifier = Modifier.fillMaxWidth()) { Text("Reboot Thor") }
-        OutlinedButton(enabled = operationReady(ThorOperation.CLEAR_CACHE) && snapshot.patchedCacheAvailable, onClick = { pendingOperation = ThorOperation.CLEAR_CACHE }, modifier = Modifier.fillMaxWidth()) { Text("Clear patched cache") }
+        Button(enabled = operationReady(ThorOperation.INSTALL_MAGISK) && !snapshot.magiskInstalled, onClick = { session.run(operationScope, ThorOperation.INSTALL_MAGISK) }, modifier = commandModifier) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
+        Button(enabled = operationReady(ThorOperation.BACKUP) && snapshot.stockBackupSlots.size < 2, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = commandModifier) { Text("Back up available slots (${snapshot.stockBackupSlots.size}/2 ready)") }
+        Button(enabled = operationReady(ThorOperation.PATCH) && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = commandModifier) { Text("Prepare root patch") }
+        Button(enabled = operationReady(ThorOperation.FLASH), onClick = { pendingOperation = ThorOperation.FLASH }, modifier = commandModifier) { Text("Flash active-slot patch") }
+        Button(enabled = operationReady(ThorOperation.RESTORE), onClick = { pendingOperation = ThorOperation.RESTORE }, modifier = commandModifier) { Text("Restore stock image") }
+        OutlinedButton(enabled = operationReady(ThorOperation.REBOOT), onClick = { pendingOperation = ThorOperation.REBOOT }, modifier = commandModifier) { Text("Reboot Thor") }
+        OutlinedButton(enabled = operationReady(ThorOperation.CLEAR_CACHE) && snapshot.patchedCacheAvailable, onClick = { pendingOperation = ThorOperation.CLEAR_CACHE }, modifier = commandModifier) { Text("Clear patched cache") }
         if (!thorReady) Text("This device is in diagnostics-only mode because it is not an AYN Thor.", color = MaterialTheme.colorScheme.error)
         if (thorReady && !rootReady) Text("This Thor is in diagnostics-only mode until the privileged service and active slot are available.", color = MaterialTheme.colorScheme.error)
         backupReason?.let { Text(it, color = MaterialTheme.colorScheme.error) }

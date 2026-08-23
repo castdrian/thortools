@@ -52,11 +52,12 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun ThorToolsTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    lowerDisplay: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
-        typography = Typography,
+        typography = if (lowerDisplay) LowerDisplayTypography else Typography,
         content = content,
     )
 }
