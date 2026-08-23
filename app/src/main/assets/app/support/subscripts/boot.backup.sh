@@ -6,10 +6,10 @@ SCRIPT_DIR="${0%/*}"
 
 WORKING_PATH="${THORTOOLS_WORKING_PATH:-/storage/emulated/0/Android/data/dev.adrian.thortools/files}"
 DOWNLOAD_PATH="/storage/emulated/0/Download"
-LOG_FILE="$WORKING_PATH/backup.boot.log"
+LOG_FILE="${THORTOOLS_LOG_PATH:-$WORKING_PATH/backup.boot.log}"
 
 mkdir -p "$WORKING_PATH" "$DOWNLOAD_PATH"
-echo "ThorTools boot backup started" > "$LOG_FILE"
+echo "ThorTools boot backup started" >> "$LOG_FILE"
 copied=0
 expected=0
 failed=0

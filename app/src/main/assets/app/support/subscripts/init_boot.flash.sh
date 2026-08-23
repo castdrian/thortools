@@ -5,9 +5,9 @@ SCRIPT_DIR="${0%/*}"
 . "$SCRIPT_DIR/partition_path.sh"
 
 WORKING_PATH="${THORTOOLS_WORKING_PATH:-/storage/emulated/0/Android/data/dev.adrian.thortools/files}"
-LOG_FILE="$WORKING_PATH/init_boot.flash.log"
+LOG_FILE="${THORTOOLS_LOG_PATH:-$WORKING_PATH/init_boot.flash.log}"
 
-echo "Flash rooted init_boot.img starting..." > $LOG_FILE
+echo "Flash rooted init_boot.img starting..." >> "$LOG_FILE"
 
 if ! require_active_slot "$1"; then
     echo "Active slot changed before init_boot flash" >> "$LOG_FILE"

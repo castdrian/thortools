@@ -6,9 +6,9 @@ SCRIPT_DIR="${0%/*}"
 
 WORKING_PATH="${THORTOOLS_WORKING_PATH:-/storage/emulated/0/Android/data/dev.adrian.thortools/files}"
 DOWNLOAD_PATH="/storage/emulated/0/Download"
-LOG_FILE="$WORKING_PATH/init_boot.restore.log"
+LOG_FILE="${THORTOOLS_LOG_PATH:-$WORKING_PATH/init_boot.restore.log}"
 
-echo "Restore init_boot.img starting..." > $LOG_FILE
+echo "Restore init_boot.img starting..." >> "$LOG_FILE"
 
 if ! require_active_slot "$2"; then
     echo "Active slot changed before init_boot restore" >> "$LOG_FILE"

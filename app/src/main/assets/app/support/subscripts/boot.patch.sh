@@ -6,9 +6,9 @@ SCRIPT_DIR="${0%/*}"
 
 WORKING_PATH="${THORTOOLS_WORKING_PATH:-/storage/emulated/0/Android/data/dev.adrian.thortools/files}"
 DOWNLOAD_PATH="/storage/emulated/0/Download"
-LOG_FILE="$WORKING_PATH/boot.patch.log"
+LOG_FILE="${THORTOOLS_LOG_PATH:-$WORKING_PATH/boot.patch.log}"
 
-echo "Magisk patch boot.img starting..." > $LOG_FILE
+echo "Magisk patch boot.img starting..." >> "$LOG_FILE"
 
 # MAGISK_PATH="/data/adb/magisk"
 MAGISK_PATH="$1"
