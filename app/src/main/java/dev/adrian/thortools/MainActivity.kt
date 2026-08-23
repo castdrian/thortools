@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private var secondaryDisplayRetryCount = 0
     private var secondaryPresentationRequested = false
     private var activityResumed = false
+    private var sessionLoaded = false
     private var hasThorLowerDisplay by mutableStateOf(false)
 
     private val displayListener = object : DisplayManager.DisplayListener {
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
         configureThorWindow(window)
         lifecycleScope.launch {
             session.load()
+            sessionLoaded = true
         }
         setContent {
             ThorToolsTheme {
@@ -80,6 +82,9 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         activityResumed = true
+        if (sessionLoaded) {
+            lifecycleScope.launch { session.refresh() }
+        }
         requestSecondaryDisplay()
     }
 
