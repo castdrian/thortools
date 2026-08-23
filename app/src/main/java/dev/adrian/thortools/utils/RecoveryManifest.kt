@@ -43,6 +43,14 @@ data class RecoveryImageInput(
     val sourceSha256: String = "",
 )
 
+data class RecoveryImageStatus(
+    val record: RecoveryImageRecord,
+    val localPath: String,
+    val downloadPath: String,
+    val localCopyVerified: Boolean,
+    val currentBuild: Boolean,
+)
+
 @Serializable
 private data class RecoveryManifestData(
     val records: List<RecoveryImageRecord> = emptyList(),
@@ -155,6 +163,18 @@ object RecoveryManifestStore {
     }
 
     fun records(context: Context): List<RecoveryImageRecord> = read(context)
+
+    fun statuses(context: Context, buildIdentity: String): List<RecoveryImageStatus> = records(context).map { record ->
+        val fileName = File(record.fileName).name
+        val localPath = FileUtils.getPathBackup(context, "/$fileName")
+        RecoveryImageStatus(
+            record = record,
+            localPath = localPath,
+            downloadPath = FileUtils.getPathDownload("/$fileName"),
+            localCopyVerified = verifyLocal(record, localPath),
+            currentBuild = record.buildIdentity == buildIdentity,
+        )
+    }
 
     private fun find(context: Context, slot: String, partition: String, patched: Boolean): RecoveryImageRecord? =
         read(context).firstOrNull { record ->

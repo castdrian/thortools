@@ -244,7 +244,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                 val queued = MagiskUtil.enqueueLatestDownload(context)
                 OperationResult(queued, if (queued) "Magisk download started in the Download folder" else "Could not start the Magisk download")
             }
-            ThorOperation.BACKUP -> if (PatchUtils.backupBoot(context)) {
+            ThorOperation.BACKUP -> if (PatchUtils.backupBoot(context, current.activeSlot)) {
                 OperationResult(true, "Available Thor boot partitions were backed up")
             } else {
                 OperationResult(false, "Thor stock backup was not completed; verify every available slot and its Download copy")
@@ -252,20 +252,20 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             ThorOperation.PATCH -> if (!current.magiskInstalled || !current.backupAvailable) {
                 OperationResult(false, "Install Magisk and create a stock backup before patching")
             } else {
-                val patched = PatchUtils.patchBoot(context)
+                val patched = PatchUtils.patchBoot(context, current.activeSlot)
                 if (patched.isNotBlank()) OperationResult(true, "Created $patched")
                 else OperationResult(false, "A verified current-build stock image is required before patching")
             }
             ThorOperation.FLASH -> if (!current.magiskInstalled || !current.patchedBackupAvailable) {
                 OperationResult(false, "A Magisk-patched active-slot image is required")
-            } else if (PatchUtils.flashBoot(context)) {
+            } else if (PatchUtils.flashBoot(context, current.activeSlot)) {
                 OperationResult(true, "Root patch flashed; reboot required")
             } else {
                 OperationResult(false, "No verified current-build active-slot patch is available")
             }
             ThorOperation.RESTORE -> if (!current.stockRestoreAvailable) {
                 OperationResult(false, "A stock active-slot backup is required")
-            } else if (PatchUtils.restoreBoot(context)) {
+            } else if (PatchUtils.restoreBoot(context, current.activeSlot)) {
                 OperationResult(true, "Stock image restored; reboot required")
             } else {
                 OperationResult(false, "No verified current-build stock image is available")
