@@ -61,6 +61,7 @@ object MagiskUtil {
     internal fun classifyDownloadStatus(status: Int): MagiskDownloadState = when (status) {
         DownloadManager.STATUS_PENDING,
         DownloadManager.STATUS_RUNNING,
+        DownloadManager.STATUS_PAUSED,
         -> MagiskDownloadState.PENDING
         DownloadManager.STATUS_SUCCESSFUL -> MagiskDownloadState.READY
         DownloadManager.STATUS_FAILED -> MagiskDownloadState.FAILED
