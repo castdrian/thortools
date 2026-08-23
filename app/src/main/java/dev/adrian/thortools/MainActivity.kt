@@ -125,14 +125,18 @@ class MainActivity : ComponentActivity() {
 
     private fun showSecondaryDisplay() {
         if (!secondaryPresentationRequested || !activityResumed || isFinishing) return
-        val display = displayManager?.displays?.firstOrNull { candidate ->
+        val display = runCatching { displayManager?.displays?.toList().orEmpty() }
+            .getOrDefault(emptyList())
+            .firstOrNull { candidate ->
             candidate.displayId != Display.DEFAULT_DISPLAY &&
-                DeviceProfile.isThorLowerDisplay(
-                    candidate.mode.physicalWidth,
-                    candidate.mode.physicalHeight,
-                    candidate.rotation,
-                )
-        }
+                candidate.modeOrNull()?.let { mode ->
+                    DeviceProfile.isThorLowerDisplay(
+                        mode.physicalWidth,
+                        mode.physicalHeight,
+                        candidate.rotation,
+                    )
+                } == true
+            }
         if (display == null) {
             dismissSecondaryDisplay()
             scheduleSecondaryDisplayRetry()
@@ -194,6 +198,8 @@ class MainActivity : ComponentActivity() {
         hasThorLowerDisplay = false
     }
 }
+
+private fun Display.modeOrNull(): Display.Mode? = runCatching { mode }.getOrNull()
 
 private class ThorPresentation(
     private val activity: ComponentActivity,
