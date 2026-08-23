@@ -399,6 +399,10 @@ class ThorToolsInstrumentedTest {
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
                 .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
                 .commit()
         }
     }
@@ -519,6 +523,10 @@ class ThorToolsInstrumentedTest {
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
                 .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
                 .commit()
             val session = ThorSession(context, backend)
             session.load()
@@ -541,6 +549,52 @@ class ThorToolsInstrumentedTest {
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
                 .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .commit()
+        }
+    }
+
+    @Test
+    fun marksAnOperationInterruptedWhenItsScopeWasAlreadyCancelled() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val baseline = SystemBackendFactory.create(context).snapshot()
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = baseline.copy(operation = operation)
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult =
+                OperationResult(true, "unexpected backend execution")
+        }
+        val parent = Job()
+        parent.cancel()
+        val scope = CoroutineScope(parent + Dispatchers.Unconfined)
+        try {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+            val session = ThorSession(context, backend)
+            session.load()
+            session.run(scope, ThorOperation.INSTALL_MAGISK)
+            assertEquals(OperationStatus.INTERRUPTED, session.snapshot.operation.status)
+            assertTrue(session.snapshot.operation.message.contains("interrupted"))
+            assertTrue(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
+        } finally {
+            scope.cancel()
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
                 .commit()
         }
     }

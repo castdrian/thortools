@@ -13,6 +13,7 @@ import dev.adrian.thortools.utils.SystemUtils
 import dev.adrian.thortools.utils.FileUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -645,7 +646,7 @@ class ThorSession(
             return
         }
         snapshot = snapshot.copy(operation = running)
-        operationJob = scope.launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 val result = try {
                     withContext(Dispatchers.IO) { backend.perform(operation, argument) }
@@ -710,6 +711,22 @@ class ThorSession(
             } finally {
                 if (operationJob === coroutineContext[Job]) operationJob = null
             }
+        }
+        operationJob = job
+        if (!job.start() && job.isCancelled && snapshot.operation == running) {
+            val interrupted = running.copy(
+                status = OperationStatus.INTERRUPTED,
+                message = if (operation.requiresRebootAfterWrite) {
+                    "Operation interrupted; reboot the Thor before retrying or restoring"
+                } else {
+                    "Operation interrupted; verify the Thor state before retrying"
+                },
+                rebootRequired = operation.requiresRebootAfterWrite,
+            )
+            persistJournal(interrupted, operationBootMarker)
+            if (interrupted.rebootRequired) persistPendingReboot(context, interrupted, operationBootMarker)
+            snapshot = snapshot.copy(operation = interrupted)
+            operationJob = null
         }
     }
 
