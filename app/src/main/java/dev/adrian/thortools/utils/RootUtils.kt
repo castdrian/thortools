@@ -6,7 +6,7 @@ import android.util.Log
 import dev.adrian.thortools.DeviceProfile
 import java.io.BufferedReader
 import java.io.File
-import java.io.FileOutputStream
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InputStreamReader
 
@@ -22,13 +22,14 @@ fun copyAssetFolderToFilesDir(context: Context, assetFolderPath: String) {
         try {
             assetManager.open(fullAssetPath).use { input ->
                 val outputFile = File(context.filesDir, fullAssetPath)
-                outputFile.parentFile?.mkdirs()
-                FileOutputStream(outputFile).use(input::copyTo)
-                outputFile.setReadable(true)
-                outputFile.setExecutable(true)
+                if (FileUtils.copyInputStream(input, outputFile.absolutePath)) {
+                    outputFile.setReadable(true)
+                    outputFile.setExecutable(true)
+                }
             }
-        } catch (_: IOException) {
+        } catch (_: FileNotFoundException) {
             copyAssetFolderToFilesDir(context, fullAssetPath)
+        } catch (_: IOException) {
         }
     }
 }

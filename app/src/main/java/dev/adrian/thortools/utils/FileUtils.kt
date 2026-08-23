@@ -3,6 +3,7 @@ package dev.adrian.thortools.utils
 import android.content.Context
 import android.util.Log
 import java.io.File
+import java.io.InputStream
 import java.io.FileOutputStream
 import java.io.IOException
 
@@ -17,9 +18,8 @@ object FileUtils {
     fun copyAsset(context: Context, assetFile: String, dstFile: String): Boolean {
         return try {
             val apkFile = File(dstFile)
-            if (apkFile.exists()) apkFile.delete()
             context.assets.open(assetFile).use { input ->
-                FileOutputStream(apkFile).use { output -> input.copyTo(output) }
+                if (!copyInputStream(input, apkFile.absolutePath)) return false
             }
             apkFile.isFile
         } catch (e: IOException) {
@@ -46,14 +46,28 @@ object FileUtils {
     }
 
     fun saveFile(path: String, content: String): Boolean {
-        val file = File(path)
+        return writeFile(path) { output -> output.write(content.toByteArray(Charsets.UTF_8)) }
+    }
 
+    fun copyInputStream(input: InputStream, path: String): Boolean =
+        writeFile(path) { output -> input.copyTo(output) }
+
+    private fun writeFile(path: String, writer: (FileOutputStream) -> Unit): Boolean {
+        val file = File(path)
+        val parent = file.absoluteFile.parentFile ?: return false
+        if (!parent.exists() && !parent.mkdirs()) return false
+        val temporary = File(parent, ".${file.name}.${System.nanoTime()}.tmp")
         return try {
-            file.parentFile?.mkdirs()
-            FileOutputStream(file).use { it.write(content.toByteArray()) }
-            file.isFile
+            FileOutputStream(temporary).use { output ->
+                writer(output)
+                output.flush()
+                output.fd.sync()
+            }
+            temporary.renameTo(file) && file.isFile
         } catch (_: Exception) {
             false
+        } finally {
+            if (temporary.exists()) temporary.delete()
         }
     }
 

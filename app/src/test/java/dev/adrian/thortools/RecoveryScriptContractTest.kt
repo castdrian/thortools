@@ -162,6 +162,16 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun supportFilesAndScriptsUseAtomicReplacement() {
+        val fileUtils = File("src/main/java/dev/adrian/thortools/utils/FileUtils.kt").readText()
+        val rootUtils = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
+        assertTrue(fileUtils.contains("fun copyInputStream(input: InputStream, path: String): Boolean"))
+        assertTrue(fileUtils.contains("output.fd.sync()"))
+        assertTrue(fileUtils.contains("temporary.renameTo(file)"))
+        assertTrue(rootUtils.contains("FileUtils.copyInputStream(input, outputFile.absolutePath)"))
+    }
+
+    @Test
     fun patchUtilsPassesValidatedSlotsToMutatingScripts() {
         val patchUtilsSource = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
         assertTrue(patchUtilsSource.contains("fun backupBoot(context: Context, expectedSlot: String)"))
