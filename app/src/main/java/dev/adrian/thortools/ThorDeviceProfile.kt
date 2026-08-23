@@ -113,6 +113,15 @@ object DeviceProfile {
             heightPixels == LOWER_HEIGHT_PIXELS &&
             rotation == THOR_DISPLAY_ROTATION
 
+    fun isThorUpperDisplay(
+        widthPixels: Int,
+        heightPixels: Int,
+        rotation: Int = THOR_DISPLAY_ROTATION,
+    ): Boolean =
+        widthPixels == UPPER_WIDTH_PIXELS &&
+            heightPixels == UPPER_HEIGHT_PIXELS &&
+            rotation == THOR_DISPLAY_ROTATION
+
     fun normalizeSlot(value: String): String = when (value.trim().lowercase()) {
         "a", "_a" -> "_a"
         "b", "_b" -> "_b"

@@ -1,6 +1,8 @@
 package dev.adrian.thortools
 
 import android.content.Context
+import android.hardware.display.DisplayManager
+import android.view.Display
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -14,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 enum class ThorOperation {
     REFRESH,
@@ -50,6 +53,40 @@ data class OperationState(
     val message: String = "Ready",
 )
 
+data class ThorDisplayPanel(
+    val displayId: Int = -1,
+    val widthPixels: Int = 0,
+    val heightPixels: Int = 0,
+    val refreshRateHz: Float = 0f,
+    val rotation: Int = DeviceProfile.THOR_DISPLAY_ROTATION,
+) {
+    val present: Boolean
+        get() = displayId >= 0
+
+    val geometryLabel: String
+        get() = if (present) "$widthPixels x $heightPixels" else "Unavailable"
+
+    val refreshRateLabel: String
+        get() = if (present && refreshRateHz > 0f) "${refreshRateHz.roundToInt()} Hz" else "Unavailable"
+
+    val orientationLabel: String
+        get() = when (rotation) {
+            0 -> "Upright"
+            1 -> "Rotated 90 deg"
+            2 -> "Upside down"
+            3 -> "Rotated 270 deg"
+            else -> "Unknown"
+        }
+}
+
+data class ThorDisplayDiagnostics(
+    val upper: ThorDisplayPanel = ThorDisplayPanel(),
+    val lower: ThorDisplayPanel = ThorDisplayPanel(),
+) {
+    val dualDisplayReady: Boolean
+        get() = upper.present && lower.present
+}
+
 data class ThorSnapshot(
     val profile: ThorDeviceProfile,
     val batteryPercent: Int,
@@ -71,6 +108,7 @@ data class ThorSnapshot(
     val stockBackupSlots: Set<String> = emptySet(),
     val patchedBackupSlots: Set<String> = emptySet(),
     val operation: OperationState,
+    val displayDiagnostics: ThorDisplayDiagnostics = ThorDisplayDiagnostics(),
 ) {
     val recoveryPartition: String
         get() = when {
@@ -232,8 +270,44 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             stockBackupSlots = PatchUtils.stockBackupSlots(context),
             patchedBackupSlots = PatchUtils.patchedBackupSlots(context),
             operation = operation,
+            displayDiagnostics = readDisplayDiagnostics(),
         )
     }
+
+    private fun readDisplayDiagnostics(): ThorDisplayDiagnostics {
+        val displayManager = context.getSystemService(DisplayManager::class.java) ?: return ThorDisplayDiagnostics()
+        val displays = runCatching { displayManager.displays.toList() }.getOrElse { return ThorDisplayDiagnostics() }
+        val upper = displays.firstOrNull { display ->
+            display.displayId == Display.DEFAULT_DISPLAY && display.isThorUpperDisplay()
+        } ?: displays.firstOrNull { display -> display.isThorUpperDisplay() }
+        val lower = displays.firstOrNull { display -> display.isThorLowerDisplay() }
+        return ThorDisplayDiagnostics(
+            upper = upper?.toThorDisplayPanel() ?: ThorDisplayPanel(),
+            lower = lower?.toThorDisplayPanel() ?: ThorDisplayPanel(),
+        )
+    }
+
+    private fun Display.isThorUpperDisplay(): Boolean =
+        modeOrNull()?.let { currentMode ->
+            DeviceProfile.isThorUpperDisplay(currentMode.physicalWidth, currentMode.physicalHeight, rotation)
+        } == true
+
+    private fun Display.isThorLowerDisplay(): Boolean =
+        modeOrNull()?.let { currentMode ->
+            DeviceProfile.isThorLowerDisplay(currentMode.physicalWidth, currentMode.physicalHeight, rotation)
+        } == true
+
+    private fun Display.toThorDisplayPanel(): ThorDisplayPanel? = modeOrNull()?.let { currentMode ->
+        ThorDisplayPanel(
+            displayId = displayId,
+            widthPixels = currentMode.physicalWidth,
+            heightPixels = currentMode.physicalHeight,
+            refreshRateHz = currentMode.refreshRate,
+            rotation = rotation,
+        )
+    }
+
+    private fun Display.modeOrNull(): Display.Mode? = runCatching { mode }.getOrNull()
 
     override fun perform(operation: ThorOperation, argument: String?): OperationResult {
         val current = snapshot()

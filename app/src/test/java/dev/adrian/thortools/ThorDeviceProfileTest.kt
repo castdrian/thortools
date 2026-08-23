@@ -50,6 +50,15 @@ class ThorDeviceProfileTest {
     }
 
     @Test
+    fun classifiesUpperDisplayGeometry() {
+        assertTrue(DeviceProfile.isThorUpperDisplay(1920, 1080))
+        assertTrue(DeviceProfile.isThorUpperDisplay(1920, 1080, DeviceProfile.THOR_DISPLAY_ROTATION))
+        assertFalse(DeviceProfile.isThorUpperDisplay(1920, 1080, 1))
+        assertFalse(DeviceProfile.isThorUpperDisplay(1080, 1920))
+        assertFalse(DeviceProfile.isThorUpperDisplay(1240, 1080))
+    }
+
+    @Test
     fun keepsLowerDisplayTextReadable() {
         assertTrue(
             DeviceProfile.minimumReadablePixels(1240, 1080) >

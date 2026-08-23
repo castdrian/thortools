@@ -42,6 +42,8 @@ import dev.adrian.thortools.AppSettings
 import dev.adrian.thortools.DeviceProfile
 import dev.adrian.thortools.OperationStatus
 import dev.adrian.thortools.ThorCapability
+import dev.adrian.thortools.ThorDisplayDiagnostics
+import dev.adrian.thortools.ThorDisplayPanel
 import dev.adrian.thortools.ThorOperation
 import dev.adrian.thortools.ThorOperationGuard
 import dev.adrian.thortools.ThorRecoveryGuidance
@@ -120,6 +122,7 @@ fun ThorDashboardScreen(session: ThorSession, context: Context, modifier: Modifi
         ) {
             Text("ThorTools", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text("Upper display dashboard", style = MaterialTheme.typography.titleMedium)
+            DashboardDisplays(session.snapshot.displayDiagnostics)
             DashboardIdentity(session.snapshot)
             DashboardCapabilities(session.snapshot)
             DashboardOperations(session.snapshot)
@@ -170,6 +173,7 @@ private fun StatusPanel(snapshot: ThorSnapshot, context: Context) {
         modifier = Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        DashboardDisplays(snapshot.displayDiagnostics)
         DashboardIdentity(snapshot)
         DashboardCapabilities(snapshot)
         DashboardOperations(snapshot)
@@ -225,6 +229,42 @@ private fun DashboardCapabilities(snapshot: ThorSnapshot) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DashboardDisplays(diagnostics: ThorDisplayDiagnostics) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Display topology", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            DisplayLine("Upper panel", diagnostics.upper)
+            DisplayLine("Lower panel", diagnostics.lower)
+            Text(
+                text = if (diagnostics.dualDisplayReady) {
+                    "Dual-display workflow ready"
+                } else {
+                    "Single-display fallback active"
+                },
+                color = if (diagnostics.dualDisplayReady) Color(0xff2e7d32) else MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DisplayLine(label: String, panel: ThorDisplayPanel) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, fontWeight = FontWeight.Bold)
+            Text(
+                "${panel.geometryLabel} | ${panel.refreshRateLabel} | ${panel.orientationLabel}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        Text(
+            if (panel.present) "Present" else "Unavailable",
+            color = if (panel.present) Color(0xff2e7d32) else MaterialTheme.colorScheme.error,
+        )
     }
 }
 
