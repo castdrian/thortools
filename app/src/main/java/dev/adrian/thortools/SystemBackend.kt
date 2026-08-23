@@ -139,6 +139,12 @@ object ThorOperationGuard {
 
     fun validate(snapshot: ThorSnapshot, operation: ThorOperation): String? {
         if (operation.requiresThor && !snapshot.profile.isThor) return "Only an AYN Thor can be modified"
+        if (operation != ThorOperation.REFRESH && snapshot.operation.status == OperationStatus.RUNNING) {
+            return "Another Thor operation is already in progress"
+        }
+        if (operation != ThorOperation.REFRESH && snapshot.operation.status == OperationStatus.INTERRUPTED) {
+            return "Acknowledge the Thor recovery record before starting another operation"
+        }
         if (operation.requiresRootService && !snapshot.rootServiceAvailable) {
             return "The Thor privileged root service is unavailable"
         }
