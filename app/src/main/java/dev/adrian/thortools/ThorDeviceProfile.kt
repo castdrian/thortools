@@ -73,6 +73,7 @@ object DeviceProfile {
     const val THOR_DISPLAY_ROTATION = 0
 
     private val thorPattern = Regex("(^|\\s)(ayn\\s*)?thor(?:\\s*(lite|base|pro|max))?(\\s|$)")
+    private val identifierSeparatorPattern = Regex("[^a-z0-9]+")
 
     fun detect(properties: DeviceProperties): ThorDeviceProfile {
         val searchable = listOf(
@@ -102,7 +103,7 @@ object DeviceProfile {
         }
     }
 
-    private fun String.normalized(): String = lowercase().replace('_', ' ').replace('-', ' ')
+    private fun String.normalized(): String = identifierSeparatorPattern.replace(lowercase(), " ").trim()
 
     fun isThorLowerDisplay(
         widthPixels: Int,
