@@ -41,7 +41,10 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun onDisplayRemoved(displayId: Int) {
-            if (secondaryPresentation?.display?.displayId == displayId) dismissSecondaryDisplay()
+            if (secondaryPresentation?.display?.displayId == displayId) {
+                dismissSecondaryDisplay()
+                scheduleSecondaryDisplayRetry()
+            }
         }
 
         override fun onDisplayChanged(displayId: Int) {
@@ -119,7 +122,11 @@ class MainActivity : ComponentActivity() {
         if (!secondaryPresentationRequested || !activityResumed || isFinishing) return
         val display = displayManager?.displays?.firstOrNull { candidate ->
             candidate.displayId != Display.DEFAULT_DISPLAY &&
-                DeviceProfile.isThorLowerDisplay(candidate.mode.physicalWidth, candidate.mode.physicalHeight)
+                DeviceProfile.isThorLowerDisplay(
+                    candidate.mode.physicalWidth,
+                    candidate.mode.physicalHeight,
+                    candidate.rotation,
+                )
         }
         if (display == null) {
             dismissSecondaryDisplay()
