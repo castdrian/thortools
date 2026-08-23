@@ -95,7 +95,7 @@ object RootUtils {
         val workingPath = context.getExternalFilesDir(null)?.absolutePath ?: return null
         val scriptPath = "$filesPath/support/subscripts/$script"
         val commandArguments = arguments.joinToString(" ") { shellQuote(it) }
-        val command = "THORTOOLS_WORKING_PATH=${shellQuote(workingPath)} THORTOOLS_LOG_PATH=${shellQuote(logPath)} sh ${shellQuote(scriptPath)} $commandArguments >> ${shellQuote(logPath)} 2>&1; printf '%s' $?"
+        val command = ": > ${shellQuote(logPath)} && THORTOOLS_WORKING_PATH=${shellQuote(workingPath)} THORTOOLS_LOG_PATH=${shellQuote(logPath)} sh ${shellQuote(scriptPath)} $commandArguments >> ${shellQuote(logPath)} 2>&1; printf '%s' $?"
         return RootExec().executeAsRoot(command).getOrNull()
     }
 

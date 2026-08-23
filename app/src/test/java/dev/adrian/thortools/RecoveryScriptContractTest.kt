@@ -107,6 +107,7 @@ class RecoveryScriptContractTest {
     fun rootScriptRunnerSharesTheAdvertisedLatestLogPath() {
         val source = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
         assertTrue(source.contains("THORTOOLS_LOG_PATH="))
+        assertTrue(source.contains(": > \${shellQuote(logPath)} &&"))
         assertTrue(source.contains(">> \${shellQuote(logPath)} 2>&1"))
     }
 
