@@ -31,16 +31,22 @@ object MagiskUtil {
         context.packageManager.getApplicationInfo(MAGISK_PACKAGE_NAME, 0).publicSourceDir
     }.getOrDefault("")
 
-    fun requestLatestDownloadOrInstall(context: Context): MagiskActionResult = when (downloadState(context)) {
-        MagiskDownloadState.READY -> if (openDownloadedApk(context)) {
-            MagiskActionResult(true, "Opened the completed Magisk installer")
-        } else {
-            MagiskActionResult(false, "The completed Magisk download could not be opened")
+    fun requestLatestDownloadOrInstall(context: Context): MagiskActionResult {
+        val state = downloadState(context)
+        if (shouldEnqueueDownload(state, hasCompletedDownloadUri(context))) {
+            return enqueueLatestDownload(context)
         }
-        MagiskDownloadState.PENDING -> MagiskActionResult(true, "Magisk is still downloading; tap again when the download completes")
-        MagiskDownloadState.NONE,
-        MagiskDownloadState.FAILED,
-        -> enqueueLatestDownload(context)
+        return when (state) {
+            MagiskDownloadState.READY -> if (openDownloadedApk(context)) {
+                MagiskActionResult(true, "Opened the completed Magisk installer")
+            } else {
+                MagiskActionResult(false, "The completed Magisk download could not be opened")
+            }
+            MagiskDownloadState.PENDING -> MagiskActionResult(true, "Magisk is still downloading; tap again when the download completes")
+            MagiskDownloadState.NONE,
+            MagiskDownloadState.FAILED,
+            -> enqueueLatestDownload(context)
+        }
     }
 
     fun downloadState(context: Context): MagiskDownloadState {
@@ -68,7 +74,16 @@ object MagiskUtil {
         else -> MagiskDownloadState.NONE
     }
 
+    internal fun shouldEnqueueDownload(state: MagiskDownloadState, completedUriAvailable: Boolean): Boolean = when (state) {
+        MagiskDownloadState.NONE,
+        MagiskDownloadState.FAILED,
+        -> true
+        MagiskDownloadState.READY -> !completedUriAvailable
+        MagiskDownloadState.PENDING -> false
+    }
+
     private fun enqueueLatestDownload(context: Context): MagiskActionResult = runCatching {
+        clearTrackedDownload(context)
         val request = DownloadManager.Request(Uri.parse(MAGISK_DOWNLOAD_URL))
             .setTitle("Magisk")
             .setDescription("Downloading the latest Magisk release")
@@ -79,6 +94,23 @@ object MagiskUtil {
         MagiskActionResult(true, "Magisk download started; tap again when it completes to open the installer")
     }.getOrElse {
         MagiskActionResult(false, "Could not start the Magisk download")
+    }
+
+    private fun hasCompletedDownloadUri(context: Context): Boolean {
+        val downloadId = trackedDownloadId(context) ?: return false
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager ?: return false
+        return runCatching { manager.getUriForDownloadedFile(downloadId) != null }.getOrDefault(false)
+    }
+
+    private fun trackedDownloadId(context: Context): Long? = AppSettings.getSharedPrefs(context)
+        .getLong(AppSettings.MAGISK_DOWNLOAD_ID_KEY, -1L)
+        .takeIf { it > 0L }
+
+    private fun clearTrackedDownload(context: Context) {
+        val downloadId = trackedDownloadId(context)
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
+        if (downloadId != null) runCatching { manager?.remove(downloadId) }
+        AppSettings.getSharedPrefs(context).edit().remove(AppSettings.MAGISK_DOWNLOAD_ID_KEY).commit()
     }
 
     private fun openDownloadedApk(context: Context): Boolean {
