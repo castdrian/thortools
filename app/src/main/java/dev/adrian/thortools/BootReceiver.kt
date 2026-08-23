@@ -13,7 +13,9 @@ class BootReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         thread(name = "ThorToolsBoot") {
             try {
-                if (!DeviceProfile.detect(SystemUtils.getDeviceProperties()).isThor || !RootUtils.hasPServer()) return@thread
+                if (!DeviceProfile.detect(SystemUtils.getDeviceProperties()).isThor ||
+                    !awaitRootService({ RootUtils.hasPServer() }, ::sleepForRootService)
+                ) return@thread
                 val prefs = AppSettings.getSharedPrefs(context)
                 if (AppSettings.hasDpiOverride(prefs)) {
                     val dpi = AppSettings.getDpi(prefs)
@@ -31,4 +33,23 @@ class BootReceiver : BroadcastReceiver() {
             }
         }
     }
+}
+
+internal fun awaitRootService(
+    isAvailable: () -> Boolean,
+    wait: (Long) -> Boolean,
+): Boolean {
+    repeat(12) { attempt ->
+        if (isAvailable()) return true
+        if (attempt < 11 && !wait(400L)) return false
+    }
+    return false
+}
+
+private fun sleepForRootService(delayMillis: Long): Boolean = try {
+    Thread.sleep(delayMillis)
+    true
+} catch (_: InterruptedException) {
+    Thread.currentThread().interrupt()
+    false
 }
