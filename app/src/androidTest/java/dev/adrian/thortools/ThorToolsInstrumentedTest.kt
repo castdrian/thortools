@@ -430,6 +430,57 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun persistsRebootLockAfterAnExplicitRebootRequest() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val baseline = SystemBackendFactory.create(context).snapshot()
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = baseline.copy(operation = operation)
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult =
+                OperationResult(true, "reboot requested", rebootRequired = operation == ThorOperation.REBOOT)
+        }
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        try {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+            val session = ThorSession(context, backend)
+            session.load()
+            session.run(scope, ThorOperation.REBOOT)
+            withTimeout(5_000L) {
+                while (!session.snapshot.operation.rebootRequired) delay(10L)
+            }
+            assertTrue(preferences.contains(AppSettings.PENDING_REBOOT_OPERATION_KEY))
+            assertEquals(
+                "Reboot the Thor before starting another operation",
+                ThorOperationGuard.validate(session.snapshot, ThorOperation.SET_DPI),
+            )
+            val restored = ThorSession(context, backend)
+            restored.load()
+            assertEquals(
+                "The Thor reboot has already been requested; wait for it to restart",
+                ThorOperationGuard.validate(restored.snapshot, ThorOperation.REBOOT),
+            )
+        } finally {
+            scope.cancel()
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+        }
+    }
+
+    @Test
     fun keepsRebootLockAfterAnInterruptedWrite() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val preferences = AppSettings.getSharedPrefs(context)

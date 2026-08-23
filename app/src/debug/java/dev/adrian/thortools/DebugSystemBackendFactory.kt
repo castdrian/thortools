@@ -139,7 +139,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
             ThorOperation.REFRESH,
             -> Unit
         }
-        if (operation in setOf(ThorOperation.SET_VOLUME_STEPS, ThorOperation.SET_BOOT_ANIMATION)) rebootRequired = true
+        if (operation in setOf(ThorOperation.SET_VOLUME_STEPS, ThorOperation.SET_BOOT_ANIMATION, ThorOperation.REBOOT)) rebootRequired = true
         return OperationResult(true, "Debug backend completed ${operation.name.lowercase().replace('_', ' ')}", rebootRequired)
     }
 

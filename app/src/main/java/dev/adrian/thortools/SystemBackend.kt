@@ -45,6 +45,7 @@ private val ThorOperation.requiresRebootAfterWrite: Boolean
         ThorOperation.RESTORE,
         ThorOperation.SET_VOLUME_STEPS,
         ThorOperation.SET_BOOT_ANIMATION,
+        ThorOperation.REBOOT,
     )
 
 enum class OperationStatus {
@@ -444,7 +445,11 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             }
             ThorOperation.REBOOT -> {
                 val rebooted = RootUtils.reboot(context)
-                OperationResult(rebooted, if (rebooted) "Reboot requested" else "The Thor reboot command failed")
+                OperationResult(
+                    rebooted,
+                    if (rebooted) "Reboot requested; wait for the Thor to restart" else "The Thor reboot command failed",
+                    rebootRequired = rebooted,
+                )
             }
             ThorOperation.SET_DPI -> {
                 val value = argument?.toIntOrNull() ?: return OperationResult(false, "Invalid DPI")
