@@ -215,7 +215,7 @@ jobs:
           release_apk="$(find "app/build/outputs/apk/$BUILD_TYPE" -type f -name 'thortools-*.apk' -print -quit)"
           test -n "$release_apk"
           cp "$release_apk" "$RUNNER_TEMP/$apk_name"
-          sha256sum "$RUNNER_TEMP/$apk_name" > "$RUNNER_TEMP/$apk_name.sha256"
+          (cd "$RUNNER_TEMP" && sha256sum "$apk_name") > "$RUNNER_TEMP/$apk_name.sha256"
           echo "path=$RUNNER_TEMP/$apk_name" >> "$GITHUB_OUTPUT"
           echo "checksum=$RUNNER_TEMP/$apk_name.sha256" >> "$GITHUB_OUTPUT"
 
