@@ -22,6 +22,7 @@ object AppSettings {
     const val PROP_VOLUME_STEPS_KEY = "propMediaVolSteps"
     const val JOURNAL_OPERATION_KEY = "journalOperation"
     const val JOURNAL_MESSAGE_KEY = "journalMessage"
+    const val JOURNAL_REBOOT_REQUIRED_KEY = "journalRebootRequired"
     const val PENDING_REBOOT_OPERATION_KEY = "pendingRebootOperation"
     const val PENDING_REBOOT_MESSAGE_KEY = "pendingRebootMessage"
     const val PENDING_REBOOT_STATUS_KEY = "pendingRebootStatus"

@@ -332,10 +332,56 @@ class ThorToolsInstrumentedTest {
             assertEquals(OperationStatus.IDLE, session.snapshot.operation.status)
             assertFalse(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
             assertFalse(preferences.contains(AppSettings.JOURNAL_MESSAGE_KEY))
+            assertFalse(preferences.contains(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY))
         } finally {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .commit()
+        }
+    }
+
+    @Test
+    fun preservesRebootRequirementInInterruptedJournal() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val baseline = SystemBackendFactory.create(context).snapshot()
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = baseline.copy(operation = operation)
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult =
+                OperationResult(true, "unexpected backend execution")
+        }
+        try {
+            preferences.edit()
+                .putString(AppSettings.JOURNAL_OPERATION_KEY, ThorOperation.FLASH.name)
+                .putString(AppSettings.JOURNAL_MESSAGE_KEY, "write completed before journal failure")
+                .putBoolean(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY, true)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+            val session = ThorSession(context, backend)
+            session.load()
+            assertTrue(session.snapshot.operation.rebootRequired)
+            assertTrue(session.acknowledgeInterruptedOperation())
+            assertTrue(session.snapshot.operation.rebootRequired)
+            assertTrue(preferences.contains(AppSettings.PENDING_REBOOT_OPERATION_KEY))
+            assertEquals(
+                "Reboot the Thor before starting another operation",
+                ThorOperationGuard.validate(session.snapshot, ThorOperation.SET_DPI),
+            )
+        } finally {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
                 .commit()
         }
     }
@@ -361,6 +407,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .commit()
             val session = ThorSession(context, backend)
             session.load()
@@ -378,6 +425,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .commit()
         }
     }
@@ -398,6 +446,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
                 .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
                 .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
@@ -422,6 +471,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
                 .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
                 .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
@@ -446,6 +496,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
                 .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
                 .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
@@ -455,8 +506,9 @@ class ThorToolsInstrumentedTest {
             session.load()
             session.run(scope, ThorOperation.REBOOT)
             withTimeout(5_000L) {
-                while (!session.snapshot.operation.rebootRequired) delay(10L)
+                while (!preferences.contains(AppSettings.PENDING_REBOOT_OPERATION_KEY)) delay(10L)
             }
+            assertTrue(session.snapshot.operation.rebootRequired)
             assertTrue(preferences.contains(AppSettings.PENDING_REBOOT_OPERATION_KEY))
             assertEquals(
                 SystemUtils.getBootMarker(context),
@@ -477,6 +529,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
                 .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
                 .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
@@ -511,6 +564,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
                 .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
                 .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
@@ -526,6 +580,7 @@ class ThorToolsInstrumentedTest {
                 while (session.snapshot.operation.status != OperationStatus.INTERRUPTED) delay(10L)
             }
             assertTrue(session.snapshot.operation.rebootRequired)
+            assertTrue(preferences.getBoolean(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY, false))
             assertTrue(preferences.contains(AppSettings.PENDING_REBOOT_OPERATION_KEY))
             assertTrue(session.acknowledgeInterruptedOperation())
             assertTrue(session.snapshot.operation.rebootRequired)
@@ -539,6 +594,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
                 .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
                 .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
@@ -569,6 +625,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
                 .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
                 .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
@@ -591,6 +648,7 @@ class ThorToolsInstrumentedTest {
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
                 .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
                 .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
                 .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)

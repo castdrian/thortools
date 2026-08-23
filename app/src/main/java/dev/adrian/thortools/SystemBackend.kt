@@ -506,6 +506,7 @@ class ThorSession(
                 operation = runCatching { ThorOperation.valueOf(journalName) }.getOrNull(),
                 status = OperationStatus.INTERRUPTED,
                 message = "Previous operation stopped before completion: $message",
+                rebootRequired = prefs.getBoolean(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY, false) || hasPendingReboot(context),
             )
         }
         return pendingRebootState(context) ?: OperationState()
@@ -538,14 +539,28 @@ class ThorSession(
 
     fun acknowledgeInterruptedOperation(): Boolean {
         if (snapshot.operation.status != OperationStatus.INTERRUPTED) return false
-        val acknowledged = clearJournal()
+        val rebootRequired = snapshot.operation.rebootRequired || hasPendingReboot(context)
+        val rebootLockSaved = !rebootRequired || hasPendingReboot(context) || persistPendingReboot(
+            context,
+            snapshot.operation.copy(status = OperationStatus.SUCCESS),
+            SystemUtils.getBootMarker(context),
+        )
+        val acknowledged = rebootLockSaved && clearJournal()
         snapshot = if (acknowledged) {
             snapshot.copy(
                 operation = OperationState(
                     operation = snapshot.operation.operation,
                     status = OperationStatus.IDLE,
                     message = "Recovery record acknowledged; review the current Thor state before retrying",
-                    rebootRequired = hasPendingReboot(context),
+                    rebootRequired = rebootRequired,
+                ),
+            )
+        } else if (!rebootLockSaved) {
+            snapshot.copy(
+                operation = snapshot.operation.copy(
+                    status = OperationStatus.INTERRUPTED,
+                    message = "Could not save the reboot recovery lock; reboot the Thor before retrying",
+                    rebootRequired = true,
                 ),
             )
         } else {
@@ -567,7 +582,12 @@ class ThorSession(
             )
             return
         }
-        val running = OperationState(operation, OperationStatus.RUNNING, "${operation.name.lowercase().replace('_', ' ')} in progress")
+        val running = OperationState(
+            operation = operation,
+            status = OperationStatus.RUNNING,
+            message = "${operation.name.lowercase().replace('_', ' ')} in progress",
+            rebootRequired = operation.requiresRebootAfterWrite,
+        )
         if (!persistJournal(running)) {
             snapshot = snapshot.copy(
                 operation = OperationState(operation, OperationStatus.FAILURE, "Could not save the operation recovery record"),
@@ -590,6 +610,7 @@ class ThorSession(
                         },
                         rebootRequired = operation.requiresRebootAfterWrite,
                     )
+                    persistJournal(interrupted)
                     if (interrupted.rebootRequired) persistPendingReboot(context, interrupted, operationBootMarker)
                     snapshot = snapshot.copy(operation = interrupted)
                 }
@@ -607,15 +628,26 @@ class ThorSession(
                 result.message,
                 rebootRequired = result.rebootRequired || hasPendingReboot(context),
             )
-            if (result.rebootRequired) persistPendingReboot(context, finished, operationBootMarker)
-            val journalCleared = clearJournal()
-            val reported = if (journalCleared) {
+            if (result.rebootRequired) persistJournal(finished)
+            val rebootLockSaved = !result.rebootRequired || persistPendingReboot(context, finished, operationBootMarker)
+            val journalCleared = rebootLockSaved && clearJournal()
+            val reported = if (!rebootLockSaved) {
+                val interrupted = OperationState(
+                    operation = operation,
+                    status = OperationStatus.INTERRUPTED,
+                    message = "Operation finished, but its reboot lock could not be saved; reboot the Thor before acknowledging",
+                    rebootRequired = true,
+                )
+                persistJournal(interrupted)
+                interrupted
+            } else if (journalCleared) {
                 finished
             } else {
                 OperationState(
                     operation = operation,
                     status = OperationStatus.INTERRUPTED,
                     message = "Operation finished, but its recovery record could not be cleared; verify the Thor state before acknowledging",
+                    rebootRequired = finished.rebootRequired,
                 )
             }
             snapshot = runCatching {
@@ -630,6 +662,7 @@ class ThorSession(
         return AppSettings.getSharedPrefs(context).edit()
             .putString(AppSettings.JOURNAL_OPERATION_KEY, state.operation?.name)
             .putString(AppSettings.JOURNAL_MESSAGE_KEY, state.message)
+            .putBoolean(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY, state.rebootRequired)
             .commit()
     }
 
@@ -637,6 +670,7 @@ class ThorSession(
         return AppSettings.getSharedPrefs(context).edit()
             .remove(AppSettings.JOURNAL_OPERATION_KEY)
             .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+            .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
             .commit()
     }
 
