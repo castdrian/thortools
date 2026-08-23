@@ -502,11 +502,20 @@ class ThorSession(
         val journalName = prefs.getString(AppSettings.JOURNAL_OPERATION_KEY, null)
         if (journalName != null) {
             val message = prefs.getString(AppSettings.JOURNAL_MESSAGE_KEY, "Interrupted") ?: "Interrupted"
+            val journalBootMarker = prefs.getString(AppSettings.JOURNAL_BOOT_MARKER_KEY, null)
+            val rebootOccurred = journalBootMarker
+                ?.takeIf(String::isNotBlank)
+                ?.let { it != SystemUtils.getBootMarker(context) }
+                ?: false
             return OperationState(
                 operation = runCatching { ThorOperation.valueOf(journalName) }.getOrNull(),
                 status = OperationStatus.INTERRUPTED,
-                message = "Previous operation stopped before completion: $message",
-                rebootRequired = prefs.getBoolean(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY, false) || hasPendingReboot(context),
+                message = if (rebootOccurred) {
+                    "Previous operation was recorded before the last reboot; verify the current Thor state: $message"
+                } else {
+                    "Previous operation stopped before completion: $message"
+                },
+                rebootRequired = (prefs.getBoolean(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY, false) && !rebootOccurred) || hasPendingReboot(context),
             )
         }
         return pendingRebootState(context) ?: OperationState()
@@ -588,7 +597,8 @@ class ThorSession(
             message = "${operation.name.lowercase().replace('_', ' ')} in progress",
             rebootRequired = operation.requiresRebootAfterWrite,
         )
-        if (!persistJournal(running)) {
+        val operationBootMarker = SystemUtils.getBootMarker(context)
+        if (!persistJournal(running, operationBootMarker)) {
             snapshot = snapshot.copy(
                 operation = OperationState(operation, OperationStatus.FAILURE, "Could not save the operation recovery record"),
             )
@@ -596,7 +606,6 @@ class ThorSession(
         }
         snapshot = snapshot.copy(operation = running)
         scope.launch {
-            val operationBootMarker = SystemUtils.getBootMarker(context)
             val result = try {
                 withContext(Dispatchers.IO) { backend.perform(operation, argument) }
             } catch (error: CancellationException) {
@@ -610,7 +619,7 @@ class ThorSession(
                         },
                         rebootRequired = operation.requiresRebootAfterWrite,
                     )
-                    persistJournal(interrupted)
+                    persistJournal(interrupted, operationBootMarker)
                     if (interrupted.rebootRequired) persistPendingReboot(context, interrupted, operationBootMarker)
                     snapshot = snapshot.copy(operation = interrupted)
                 }
@@ -628,7 +637,7 @@ class ThorSession(
                 result.message,
                 rebootRequired = result.rebootRequired || hasPendingReboot(context),
             )
-            if (result.rebootRequired) persistJournal(finished)
+            if (result.rebootRequired) persistJournal(finished, operationBootMarker)
             val rebootLockSaved = !result.rebootRequired || persistPendingReboot(context, finished, operationBootMarker)
             val journalCleared = rebootLockSaved && clearJournal()
             val reported = if (!rebootLockSaved) {
@@ -638,7 +647,7 @@ class ThorSession(
                     message = "Operation finished, but its reboot lock could not be saved; reboot the Thor before acknowledging",
                     rebootRequired = true,
                 )
-                persistJournal(interrupted)
+                persistJournal(interrupted, operationBootMarker)
                 interrupted
             } else if (journalCleared) {
                 finished
@@ -658,11 +667,12 @@ class ThorSession(
         }
     }
 
-    private fun persistJournal(state: OperationState): Boolean {
+    private fun persistJournal(state: OperationState, bootMarker: String): Boolean {
         return AppSettings.getSharedPrefs(context).edit()
             .putString(AppSettings.JOURNAL_OPERATION_KEY, state.operation?.name)
             .putString(AppSettings.JOURNAL_MESSAGE_KEY, state.message)
             .putBoolean(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY, state.rebootRequired)
+            .putString(AppSettings.JOURNAL_BOOT_MARKER_KEY, bootMarker)
             .commit()
     }
 
@@ -671,6 +681,7 @@ class ThorSession(
             .remove(AppSettings.JOURNAL_OPERATION_KEY)
             .remove(AppSettings.JOURNAL_MESSAGE_KEY)
             .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+            .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
             .commit()
     }
 
