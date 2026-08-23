@@ -14,6 +14,7 @@ echo "Magisk patch init_boot.img starting..." > $LOG_FILE
 MAGISK_PATH="$1"
 MAGISK_PATCH="$MAGISK_PATH/boot_patch.sh"
 MAGISK_NEWBOOT="$MAGISK_PATH/new-boot.img"
+EXPECTED_SHA256="$3"
 if ! require_active_slot "$2"; then
     echo "Active slot changed before init_boot patch" >> "$LOG_FILE"
     exit 2
@@ -21,6 +22,11 @@ fi
 BOOT_IMG="$WORKING_PATH/init_boot$ACTIVE_SLOT.img"
 PATCHED_BOOT="$WORKING_PATH/init_boot_patched$ACTIVE_SLOT.img"
 TEMP_PATCHED_BOOT="$PATCHED_BOOT.tmp"
+
+if ! verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256"; then
+    echo "Stock init_boot image changed before patch" >> "$LOG_FILE"
+    exit 1
+fi
 
 echo "Cleaning temp files"
 rm -f "$MAGISK_NEWBOOT"

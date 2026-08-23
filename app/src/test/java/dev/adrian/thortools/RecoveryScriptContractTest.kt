@@ -29,6 +29,16 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun patchScriptsReverifyTheStockImageBeforeMagiskRuns() {
+        listOf("boot.patch.sh", "init_boot.patch.sh").forEach { name ->
+            val source = script(name)
+            assertTrue(source.contains("EXPECTED_SHA256=\"\$3\""))
+            assertTrue(source.contains("verify_image_hash \"\$BOOT_IMG\" \"\$EXPECTED_SHA256\""))
+            assertTrue(source.contains("changed before patch"))
+        }
+    }
+
+    @Test
     fun restoreScriptsAcceptAnExplicitVerifiedSource() {
         assertTrue(script("boot.restore.sh").contains("BOOT_IMG=\"\${1:-\$WORKING_PATH/boot\$ACTIVE_SLOT.img}\""))
         assertTrue(script("init_boot.restore.sh").contains("BOOT_IMG=\"\${1:-\$WORKING_PATH/init_boot\$ACTIVE_SLOT.img}\""))
@@ -81,7 +91,7 @@ class RecoveryScriptContractTest {
         assertTrue(patchUtilsSource.contains("fun restoreBoot(context: Context, expectedSlot: String)"))
         assertTrue(patchUtilsSource.contains("stableSlot(expectedSlot)"))
         assertTrue(patchUtilsSource.contains("\"\$partition.flash.sh\", listOf(slot, patchedHash)"))
-        assertTrue(patchUtilsSource.contains("\"\$partition.patch.sh\", listOf(magiskPath, slot)"))
+        assertTrue(patchUtilsSource.contains("\"\$partition.patch.sh\", listOf(magiskPath, slot, sourceHash)"))
         assertTrue(patchUtilsSource.contains("\"\$partition.restore.sh\", listOf(source.path, slot, source.sha256)"))
     }
 

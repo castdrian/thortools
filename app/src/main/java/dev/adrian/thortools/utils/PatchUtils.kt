@@ -170,7 +170,7 @@ object PatchUtils {
             buildIdentity = buildIdentity,
         ) ?: return ""
         val output = patchedPath(context, partition, slot)
-        if (patchPartition(context, partition, output, magiskPath, slot) &&
+        if (patchPartition(context, partition, output, magiskPath, slot, sourceHash) &&
             stableSlot(slot) != null &&
             recordPatchedImage(context, partition, slot, output, buildIdentity, sourceHash)
         ) return output
@@ -196,9 +196,16 @@ object PatchUtils {
         )
     }
 
-    private fun patchPartition(context: Context, partition: String, output: String, magiskPath: String, slot: String): Boolean {
+    private fun patchPartition(
+        context: Context,
+        partition: String,
+        output: String,
+        magiskPath: String,
+        slot: String,
+        sourceHash: String,
+    ): Boolean {
         FileUtils.deleteFile(output)
-        return RootUtils.runRootScript(context, "$partition.patch.sh", listOf(magiskPath, slot)) == "0" && nonEmpty(output)
+        return RootUtils.runRootScript(context, "$partition.patch.sh", listOf(magiskPath, slot, sourceHash)) == "0" && nonEmpty(output)
     }
 
     private fun recordPatchedImage(
