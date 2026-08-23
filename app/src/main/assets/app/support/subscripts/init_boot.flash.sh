@@ -18,9 +18,16 @@ BOOT_IMG="$WORKING_PATH/init_boot_patched$ACTIVE_SLOT.img"
 # BOOT_DEVICE=$(ls -la /dev/block/bootdevice/by-name | grep " init_boot$ACTIVE_SLOT " | sed -En 's/^.*(\/dev\/block\/.*)$/\1/p')
 BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"
 
-if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE" && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
-    echo "Flash rooted init_boot.img complete!" >> "$LOG_FILE"
-    exit 0
+if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE"; then
+    if ! require_active_slot "$1"; then
+        echo "Active slot changed before init_boot write" >> "$LOG_FILE"
+        exit 2
+    fi
+    BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"
+    if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE" && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
+        echo "Flash rooted init_boot.img complete!" >> "$LOG_FILE"
+        exit 0
+    fi
 fi
 
 echo "Flash rooted init_boot.img failed!" >> "$LOG_FILE"

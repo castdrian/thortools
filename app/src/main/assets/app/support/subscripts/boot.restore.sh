@@ -22,8 +22,13 @@ if [ ! -s "$BOOT_IMG" ]; then
 fi
 
 if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE"; then
+    if ! require_active_slot "$2"; then
+        echo "Active slot changed before boot restore write" >> "$LOG_FILE"
+        exit 2
+    fi
+    BOOT_DEVICE="$(resolve_partition "boot$ACTIVE_SLOT")"
     echo "Restoring $BOOT_IMG..." >> $LOG_FILE
-    if dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
+    if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE" && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
         echo "Restore boot.img complete!" >> "$LOG_FILE"
         exit 0
     fi

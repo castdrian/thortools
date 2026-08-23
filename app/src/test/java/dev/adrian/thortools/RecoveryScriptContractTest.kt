@@ -85,6 +85,21 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun flashAndRestoreScriptsRecheckSlotAndResolvePartitionBeforeWriting() {
+        listOf(
+            "boot.flash.sh" to "before boot write",
+            "init_boot.flash.sh" to "before init_boot write",
+            "boot.restore.sh" to "before boot restore write",
+            "init_boot.restore.sh" to "before init_boot restore write",
+        ).forEach { (name, message) ->
+            val source = script(name)
+            assertTrue(source.split("require_active_slot").size - 1 >= 2)
+            assertTrue(source.contains(message))
+            assertTrue(source.contains("BOOT_DEVICE=\"\$(resolve_partition"))
+        }
+    }
+
+    @Test
     fun patchUtilsPassesValidatedSlotsToMutatingScripts() {
         val patchUtilsSource = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
         assertTrue(patchUtilsSource.contains("fun backupBoot(context: Context, expectedSlot: String)"))
