@@ -50,6 +50,18 @@ class ThorRecoveryGuidanceTest {
     }
 
     @Test
+    fun explainsModuleSynchronizationStates() {
+        assertEquals(
+            "ThorTools could not synchronize its Magisk module. Verify root access, then retry the module setting before rebooting.",
+            ThorRecoveryGuidance.forSnapshot(snapshot().copy(moduleSyncState = ThorModuleSyncState.FAILED)),
+        )
+        assertEquals(
+            "ThorTools module synchronization is pending. Keep the Thor rooted and wait for the dashboard to report it synced.",
+            ThorRecoveryGuidance.forSnapshot(snapshot().copy(moduleSyncState = ThorModuleSyncState.PENDING)),
+        )
+    }
+
+    @Test
     fun explainsRuntimeBlockers() {
         assertEquals(
             "Thor system state could not be read. Refresh before changing the device.",

@@ -138,6 +138,7 @@ data class ThorSnapshot(
     val operation: OperationState,
     val displayDiagnostics: ThorDisplayDiagnostics = ThorDisplayDiagnostics(),
     val stateReadHealthy: Boolean = true,
+    val moduleSyncState: ThorModuleSyncState = ThorModuleSyncState.NOT_CONFIGURED,
 ) {
     val recoveryPartition: String
         get() = when {
@@ -347,6 +348,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         val boot = rootService && RootUtils.hasPartition(context, "boot", properties.slot)
         val backupDestination = FileUtils.isBackupDestinationWritable(context)
         val availableBootSlots = PatchUtils.availableBootSlots(context)
+        val moduleSyncState = AppSettings.getModuleSyncState(prefs)
         val capabilities = buildSet {
             if (rootService) add(ThorCapability.ROOT_SERVICE)
             if (rooted) add(ThorCapability.ROOTED)
@@ -380,6 +382,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             patchedBackupSlots = PatchUtils.patchedBackupSlots(context),
             operation = operation,
             displayDiagnostics = readDisplayDiagnostics(),
+            moduleSyncState = moduleSyncState,
         )
     }
 

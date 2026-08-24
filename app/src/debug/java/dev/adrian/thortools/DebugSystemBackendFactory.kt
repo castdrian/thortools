@@ -59,6 +59,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         stockBackupSlots = emptySet(),
         patchedBackupSlots = emptySet(),
         operation = OperationState(),
+        moduleSyncState = AppSettings.getModuleSyncState(preferences),
         displayDiagnostics = ThorDisplayDiagnostics(
             upper = ThorDisplayPanel(
                 displayId = 0,
@@ -158,6 +159,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                 if (!AppSettings.setVolumeSteps(preferences, value)) {
                     return OperationResult(false, "Could not save the volume-step setting")
                 }
+                AppSettings.setModuleSyncState(preferences, ThorModuleSyncState.SYNCED)
                 state = state.copy(volumeSteps = AppSettings.getVolumeSteps(preferences, value))
             }
             ThorOperation.SET_BOOT_ANIMATION -> {
@@ -169,6 +171,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                 if (!AppSettings.setSkipBootAnimation(preferences, value)) {
                     return OperationResult(false, "Could not save the boot-animation setting")
                 }
+                AppSettings.setModuleSyncState(preferences, ThorModuleSyncState.SYNCED)
             }
             ThorOperation.INSTALL_MAGISK,
             ThorOperation.REBOOT,
@@ -219,6 +222,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
             lcdDensity = AppSettings.getDpi(preferences, 320),
             volumeSteps = AppSettings.getVolumeSteps(preferences, 20),
             animationSpeed = AppSettings.getAnimationSpeed(preferences, 1f),
+            moduleSyncState = AppSettings.getModuleSyncState(preferences),
             backupAvailable = state.activeSlot in stockSlots,
             stockRestoreAvailable = state.activeSlot in stockSlots,
             patchedBackupAvailable = state.activeSlot in patchedSlots,

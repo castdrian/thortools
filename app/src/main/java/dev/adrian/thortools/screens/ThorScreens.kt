@@ -51,6 +51,7 @@ import dev.adrian.thortools.ThorDisplayDiagnostics
 import dev.adrian.thortools.ThorDisplayPanel
 import dev.adrian.thortools.ThorOperation
 import dev.adrian.thortools.ThorOperationGuard
+import dev.adrian.thortools.ThorModuleSyncState
 import dev.adrian.thortools.ThorRecoveryGuidance
 import dev.adrian.thortools.ThorSession
 import dev.adrian.thortools.ThorSnapshot
@@ -227,6 +228,7 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
             DataLine("Root service", if (snapshot.rootServiceAvailable) "Available" else "Unavailable")
             DataLine("Root state", if (snapshot.rooted) "Rooted" else "Not rooted")
             DataLine("Magisk", if (snapshot.magiskInstalled) "Installed" else "Not installed")
+            DataLine("Magisk module sync", snapshot.moduleSyncState.label)
             DataLine("Recovery target", snapshot.recoveryPartition)
             DataLine(
                 "Stock backups",
@@ -510,6 +512,11 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
         }
         if (!enabled) Text("The Thor privileged root service is required before system changes can be applied.", color = MaterialTheme.colorScheme.error)
         if (enabled && !moduleReady) Text("Install Magisk and complete root setup before changing volume steps or boot animation.", color = MaterialTheme.colorScheme.error)
+        when (snapshot.moduleSyncState) {
+            ThorModuleSyncState.PENDING -> Text("ThorTools module synchronization is pending. Keep the Thor rooted and wait for the dashboard to report it synced.", color = MaterialTheme.colorScheme.error)
+            ThorModuleSyncState.FAILED -> Text("ThorTools could not synchronize its Magisk module. Verify root access and retry the module setting.", color = MaterialTheme.colorScheme.error)
+            else -> Unit
+        }
     }
 }
 

@@ -38,6 +38,7 @@ object ThorDiagnosticsReport {
         appendLine("rootServiceAvailable=${snapshot.rootServiceAvailable}")
         appendLine("rooted=${snapshot.rooted}")
         appendLine("magiskInstalled=${snapshot.magiskInstalled}")
+        appendLine("moduleSyncState=${snapshot.moduleSyncState.name}")
         appendLine("initBootAvailable=${snapshot.initBootAvailable}")
         appendLine("bootAvailable=${snapshot.bootAvailable}")
         appendLine("backupDestinationWritable=${snapshot.backupDestinationWritable}")

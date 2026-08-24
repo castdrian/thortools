@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class BootReceiverTest {
     @Test
@@ -51,5 +52,13 @@ class BootReceiverTest {
             ),
         )
         assertEquals(1, checks)
+    }
+
+    @Test
+    fun retainsModuleSynchronizationFailureAfterBootRetry() {
+        val source = File("src/main/java/dev/adrian/thortools/BootReceiver.kt").readText()
+        assertTrue(source.contains("AppSettings.setModuleSyncState(prefs, ThorModuleSyncState.FAILED)"))
+        assertTrue(source.contains("if (AppSettings.hasModuleSettings(prefs))"))
+        assertTrue(source.contains("AppSettings.save(context)"))
     }
 }

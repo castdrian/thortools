@@ -5,6 +5,33 @@ import android.content.SharedPreferences
 import dev.adrian.thortools.utils.FileUtils
 import dev.adrian.thortools.utils.RootUtils
 
+enum class ThorModuleSyncState {
+    NOT_CONFIGURED,
+    PENDING,
+    SYNCED,
+    FAILED;
+
+    val label: String
+        get() = when (this) {
+            NOT_CONFIGURED -> "Not configured"
+            PENDING -> "Pending"
+            SYNCED -> "Synced"
+            FAILED -> "Failed"
+        }
+
+    companion object {
+        fun fromStored(value: String?, moduleConfigured: Boolean): ThorModuleSyncState {
+            val stored = value?.let { runCatching { valueOf(it) }.getOrNull() }
+            return when {
+                stored == null && moduleConfigured -> PENDING
+                stored == NOT_CONFIGURED && moduleConfigured -> PENDING
+                stored == null -> NOT_CONFIGURED
+                else -> stored
+            }
+        }
+    }
+}
+
 object AppSettings {
     const val ANIMATION_SPEED_DEFAULT = 1.0f
     const val DPI_MIN = 290
@@ -30,37 +57,53 @@ object AppSettings {
     const val PENDING_REBOOT_BOOT_MARKER_KEY = "pendingRebootBootMarker"
     const val RECOVERY_MANIFEST_KEY = "recoveryManifest"
     const val MAGISK_DOWNLOAD_ID_KEY = "magiskDownloadId"
+    const val MODULE_SYNC_STATE_KEY = "moduleSyncState"
 
     fun getSharedPrefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     fun save(context: Context): Boolean {
         val sharedPrefs = getSharedPrefs(context)
-        val properties = buildString {
-            if (hasDpiOverride(sharedPrefs)) {
-                val dpi = getDpi(sharedPrefs)
-                if (dpi in DPI_MIN..DPI_MAX) appendLine("ro.sf.lcd_density=$dpi")
+        setModuleSyncState(sharedPrefs, ThorModuleSyncState.PENDING)
+        val result = runCatching {
+            val properties = buildString {
+                if (hasDpiOverride(sharedPrefs)) {
+                    val dpi = getDpi(sharedPrefs)
+                    if (dpi in DPI_MIN..DPI_MAX) appendLine("ro.sf.lcd_density=$dpi")
+                }
+                if (hasVolumeStepsOverride(sharedPrefs)) {
+                    val volumeSteps = getVolumeSteps(sharedPrefs)
+                    if (volumeSteps in VOLUME_STEPS_MIN..VOLUME_STEPS_MAX) appendLine("ro.config.media_vol_steps=$volumeSteps")
+                }
+                if (getSkipBootAnimation(sharedPrefs)) appendLine("debug.sf.nobootanimation=1")
             }
-            if (hasVolumeStepsOverride(sharedPrefs)) {
-                val volumeSteps = getVolumeSteps(sharedPrefs)
-                if (volumeSteps in VOLUME_STEPS_MIN..VOLUME_STEPS_MAX) appendLine("ro.config.media_vol_steps=$volumeSteps")
+            val propFile = FileUtils.getPathSupportFiles(context, "/magisk/thortools/system.prop")
+            if (!FileUtils.saveFile(propFile, properties)) {
+                false
+            } else {
+                val modulePropFile = FileUtils.getPathSupportFiles(context, "/magisk/thortools/module.prop")
+                val moduleProperties = buildString {
+                    appendLine("id=thortools")
+                    appendLine("name=ThorTools System Tweaks")
+                    appendLine("version=${BuildConfig.VERSION_NAME}")
+                    appendLine("versionCode=${BuildConfig.VERSION_CODE}")
+                    appendLine("author=castdrian")
+                    appendLine("description=System properties managed by ThorTools for the AYN Thor")
+                }
+                FileUtils.saveFile(modulePropFile, moduleProperties) && RootUtils.installThorToolsMagiskModule(context)
             }
-            if (getSkipBootAnimation(sharedPrefs)) appendLine("debug.sf.nobootanimation=1")
-        }
-        val propFile = FileUtils.getPathSupportFiles(context, "/magisk/thortools/system.prop")
-        if (!FileUtils.saveFile(propFile, properties)) return false
-        val modulePropFile = FileUtils.getPathSupportFiles(context, "/magisk/thortools/module.prop")
-        val moduleProperties = buildString {
-            appendLine("id=thortools")
-            appendLine("name=ThorTools System Tweaks")
-            appendLine("version=${BuildConfig.VERSION_NAME}")
-            appendLine("versionCode=${BuildConfig.VERSION_CODE}")
-            appendLine("author=castdrian")
-            appendLine("description=System properties managed by ThorTools for the AYN Thor")
-        }
-        if (!FileUtils.saveFile(modulePropFile, moduleProperties)) return false
-        return RootUtils.installThorToolsMagiskModule(context)
+        }.getOrDefault(false)
+        setModuleSyncState(sharedPrefs, if (result) ThorModuleSyncState.SYNCED else ThorModuleSyncState.FAILED)
+        return result
     }
+
+    fun getModuleSyncState(sharedPrefs: SharedPreferences): ThorModuleSyncState {
+        val stored = runCatching { sharedPrefs.getString(MODULE_SYNC_STATE_KEY, null) }.getOrNull()
+        return ThorModuleSyncState.fromStored(stored, hasModuleSettings(sharedPrefs))
+    }
+
+    fun setModuleSyncState(sharedPrefs: SharedPreferences, state: ThorModuleSyncState): Boolean =
+        sharedPrefs.edit().putString(MODULE_SYNC_STATE_KEY, state.name).commit()
 
     fun hasDpiOverride(sharedPrefs: SharedPreferences): Boolean = sharedPrefs.contains(DPI_KEY)
 

@@ -67,6 +67,24 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun derivesPendingModuleStateForConfiguredPreferences() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = context.getSharedPreferences("ThorToolsModuleStateTest", android.content.Context.MODE_PRIVATE)
+        try {
+            preferences.edit().clear().commit()
+            assertEquals(ThorModuleSyncState.NOT_CONFIGURED, AppSettings.getModuleSyncState(preferences))
+            preferences.edit().putInt(AppSettings.VOLUME_STEPS_KEY, 20).commit()
+            assertEquals(ThorModuleSyncState.PENDING, AppSettings.getModuleSyncState(preferences))
+            AppSettings.setModuleSyncState(preferences, ThorModuleSyncState.FAILED)
+            assertEquals(ThorModuleSyncState.FAILED, AppSettings.getModuleSyncState(preferences))
+            AppSettings.setModuleSyncState(preferences, ThorModuleSyncState.SYNCED)
+            assertEquals(ThorModuleSyncState.SYNCED, AppSettings.getModuleSyncState(preferences))
+        } finally {
+            preferences.edit().clear().commit()
+        }
+    }
+
+    @Test
     fun restoresModuleSettingsWithoutCreatingOverridesThatWereAbsent() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val preferences = AppSettings.getSharedPrefs(context)

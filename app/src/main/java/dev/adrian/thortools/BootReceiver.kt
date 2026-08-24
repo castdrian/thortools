@@ -13,9 +13,12 @@ class BootReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         thread(name = "ThorToolsBoot") {
             try {
-                if (!DeviceProfile.detect(SystemUtils.getDeviceProperties()).isThor ||
-                    !awaitRootService({ RootUtils.isPServerResponsive() }, ::sleepForRootService)
-                ) return@thread
+                if (!DeviceProfile.detect(SystemUtils.getDeviceProperties()).isThor) return@thread
+                if (!awaitRootService({ RootUtils.isPServerResponsive() }, ::sleepForRootService)) {
+                    val prefs = AppSettings.getSharedPrefs(context)
+                    if (AppSettings.hasModuleSettings(prefs)) AppSettings.setModuleSyncState(prefs, ThorModuleSyncState.FAILED)
+                    return@thread
+                }
                 val prefs = AppSettings.getSharedPrefs(context)
                 if (AppSettings.hasDpiOverride(prefs)) {
                     val dpi = AppSettings.getDpi(prefs)
