@@ -173,6 +173,29 @@ class ThorDeviceProfileTest {
     }
 
     @Test
+    fun readsProductPartitionIdentityFallbacks() {
+        val values = mapOf(
+            "ro.product.product.manufacturer" to "AYN",
+            "ro.product.product.brand" to "AYN",
+            "ro.product.product.model" to "AYN Thor Max",
+            "ro.product.product.device" to "odin2thor",
+            "ro.product.product.name" to "odin2thor",
+            "ro.product.product.board" to "qcs8550",
+        )
+
+        val properties = SystemUtils.getDeviceProperties { values[it].orEmpty() }
+
+        assertEquals("AYN", properties.manufacturer)
+        assertEquals("AYN", properties.brand)
+        assertEquals("AYN Thor Max", properties.model)
+        assertEquals("odin2thor", properties.device)
+        assertEquals("odin2thor", properties.product)
+        assertEquals("qcs8550", properties.board)
+        assertTrue(DeviceProfile.detect(properties).isThor)
+        assertEquals(ThorVariant.MAX, DeviceProfile.detect(properties).variant)
+    }
+
+    @Test
     fun prefersPrimaryPropertyNamespacesBeforeFallbacks() {
         val values = mapOf(
             "ro.product.manufacturer" to "AYN",
