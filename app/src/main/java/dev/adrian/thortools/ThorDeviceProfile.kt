@@ -73,6 +73,7 @@ object DeviceProfile {
     const val THOR_DISPLAY_ROTATION = 0
 
     private val thorPattern = Regex("(^|\\s)(ayn\\s*)?thor(?:\\s*(lite|base|pro|max))?(\\s|$)")
+    private val compactThorPattern = Regex("^(?:ayn)?(?:odin2)?thor(?:lite|base|pro|max)?$")
     private val identifierSeparatorPattern = Regex("[^a-z0-9]+")
 
     fun detect(properties: DeviceProperties): ThorDeviceProfile {
@@ -87,13 +88,13 @@ object DeviceProfile {
             properties.soc,
             properties.platform,
         ).joinToString(" ").normalized()
-        val isThor = thorPattern.containsMatchIn(searchable)
+        val isThor = searchable.containsThorIdentifier()
         return ThorDeviceProfile(properties, isThor, variantFor(properties))
     }
 
     fun variantFor(value: String): ThorVariant {
         val normalized = value.normalized()
-        if (!thorPattern.containsMatchIn(normalized)) return ThorVariant.UNKNOWN
+        if (!normalized.containsThorIdentifier()) return ThorVariant.UNKNOWN
         return when {
             normalized.contains("lite") -> ThorVariant.LITE
             normalized.contains("max") -> ThorVariant.MAX
@@ -131,6 +132,9 @@ object DeviceProfile {
     }
 
     private fun String.normalized(): String = identifierSeparatorPattern.replace(lowercase(), " ").trim()
+
+    private fun String.containsThorIdentifier(): Boolean =
+        thorPattern.containsMatchIn(this) || split(' ').any(compactThorPattern::matches)
 
     private val litePlatformPattern = Regex("(^|\\s)(sm8250|kona)(\\s|$)")
 
