@@ -146,7 +146,10 @@ class MainActivity : ComponentActivity() {
         secondaryDisplayRetryCount = 0
         hasThorLowerDisplay = true
         secondaryPresentation?.let { existing ->
-            if (existing.display.displayId == display.displayId && existing.isShowing) return
+            if (existing.display.displayId == display.displayId && existing.isShowing) {
+                existing.requestInputFocus()
+                return
+            }
             existing.dismiss()
         }
         hasThorLowerDisplay = false
@@ -161,6 +164,8 @@ class MainActivity : ComponentActivity() {
         }
         try {
             presentation.show()
+            presentation.requestInputFocus()
+            presentation.window?.decorView?.postDelayed({ presentation.requestInputFocus() }, 250L)
             hasThorLowerDisplay = secondaryPresentation === presentation && presentation.isShowing
         } catch (_: WindowManager.BadTokenException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
@@ -259,22 +264,33 @@ private class ThorPresentation(
         window?.decorView?.isFocusable = true
         window?.decorView?.isFocusableInTouchMode = true
         window?.takeKeyEvents(true)
+        window?.decorView?.requestFocus()
         window?.decorView?.requestFocusFromTouch()
+        composeView.requestFocus()
         composeView.requestFocusFromTouch()
+    }
+
+    fun requestInputFocus() {
+        window?.decorView?.post {
+            if (!isShowing) return@post
+            configureThorWindow(window)
+            window?.takeKeyEvents(true)
+            window?.decorView?.requestFocus()
+            window?.decorView?.requestFocusFromTouch()
+            contentView?.requestFocus()
+            contentView?.requestFocusFromTouch()
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            configureThorWindow(window)
-            window?.takeKeyEvents(true)
-            contentView?.requestFocusFromTouch()
-        }
+        if (hasFocus) requestInputFocus()
     }
 }
 
 private fun configureThorWindow(window: android.view.Window?) {
     window ?: return
+    window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
     WindowCompat.setDecorFitsSystemWindows(window, false)
     val insetsController = WindowCompat.getInsetsController(window, window.decorView)
     insetsController.hide(WindowInsetsCompat.Type.systemBars())

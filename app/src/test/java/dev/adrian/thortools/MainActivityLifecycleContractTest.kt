@@ -34,6 +34,9 @@ class MainActivityLifecycleContractTest {
         assertTrue(show.contains("catch (_: WindowManager.InvalidDisplayException)"))
         assertTrue(show.contains("hasThorLowerDisplay = false"))
         assertTrue(show.contains("hasThorLowerDisplay = secondaryPresentation === presentation && presentation.isShowing"))
+        assertTrue(show.contains("existing.requestInputFocus()"))
+        assertTrue(show.contains("presentation.requestInputFocus()"))
+        assertTrue(show.contains("postDelayed({ presentation.requestInputFocus() }, 250L)"))
         assertTrue(retry.contains("!secondaryPresentationRequested"))
         assertTrue(stop.contains("dismissSecondaryDisplay(clearRequest = true)"))
     }
@@ -60,7 +63,12 @@ class MainActivityLifecycleContractTest {
         assertTrue(presentation.contains("setCancelable(false)"))
         assertTrue(presentation.contains("setContentView(composeView)"))
         assertTrue(presentation.contains("configureThorWindow(window)"))
+        assertTrue(presentation.contains("window?.decorView?.requestFocus()"))
         assertTrue(presentation.contains("contentView?.requestFocusFromTouch()"))
+        assertTrue(presentation.contains("contentView?.requestFocus()"))
         assertTrue(presentation.contains("ThorToolsTheme(lowerDisplay = true)"))
+        assertTrue(presentation.contains("fun requestInputFocus()"))
+        assertTrue(presentation.contains("if (!isShowing) return@post"))
+        assertTrue(source.contains("window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)"))
     }
 }
