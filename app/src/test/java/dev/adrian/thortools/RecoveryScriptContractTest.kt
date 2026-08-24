@@ -215,6 +215,14 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun moduleInstallationVerifiesItsDestinationPayload() {
+        val source = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
+        assertTrue(source.contains("return runRootAction(context, command) && isThorToolsMagiskModuleInstalled(context)"))
+        assertTrue(source.contains("[ -s ${'$'}{shellQuote(\"${'$'}MODULE_DIR/thortools/module.prop\")} ]"))
+        assertTrue(source.contains("[ -e ${'$'}{shellQuote(\"${'$'}MODULE_DIR/thortools/system.prop\")} ]"))
+    }
+
+    @Test
     fun magiskUtilityCacheRejectsIncompleteExtraction() {
         val source = File("src/main/java/dev/adrian/thortools/utils/MagiskUtil.kt").readText()
         assertTrue(source.contains("MAGISK_UTIL_BINARIES"))

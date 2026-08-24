@@ -220,11 +220,14 @@ object RootUtils {
             exit 1
             )
         """.trimIndent()
-        return runRootAction(context, command)
+        return runRootAction(context, command) && isThorToolsMagiskModuleInstalled(context)
     }
 
     fun isThorToolsMagiskModuleInstalled(context: Context): Boolean =
-        checkFileExistsRoot(context, "$MODULE_DIR/thortools/module.prop")
+        runRootCommand(
+            context,
+            "[ -s ${shellQuote("$MODULE_DIR/thortools/module.prop")} ] && [ -e ${shellQuote("$MODULE_DIR/thortools/system.prop")} ] && printf '%s' 1 || printf '%s' 0",
+        ) == "1"
 
     fun startActivityRoot(context: Context, activity: String): Boolean = runRootAction(context, "am start -n $activity")
 
