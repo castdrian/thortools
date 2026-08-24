@@ -626,6 +626,7 @@ class ThorSession(
 ) {
     private val initialOperation = operationFromJournal()
     private var operationJob: Job? = null
+    private var stateLoaded = false
 
     var snapshot by mutableStateOf(ThorSnapshot.loading(initialOperation))
         private set
@@ -660,6 +661,7 @@ class ThorSession(
         }.getOrElse {
             failedSnapshot(initialOperation)
         }
+        stateLoaded = true
     }
 
     suspend fun refresh() {
@@ -677,6 +679,7 @@ class ThorSession(
         }.getOrElse {
             failedSnapshot(refreshedOperation)
         }
+        stateLoaded = true
     }
 
     private fun failedSnapshot(operation: OperationState): ThorSnapshot {
@@ -696,8 +699,11 @@ class ThorSession(
         )
     }
 
+    fun canAcknowledgeInterruptedOperation(): Boolean =
+        snapshot.operation.status == OperationStatus.INTERRUPTED && stateLoaded && snapshot.stateReadHealthy
+
     fun acknowledgeInterruptedOperation(): Boolean {
-        if (snapshot.operation.status != OperationStatus.INTERRUPTED) return false
+        if (!canAcknowledgeInterruptedOperation()) return false
         val rebootRequired = snapshot.operation.rebootRequired || hasPendingReboot(context)
         val rebootLockSaved = !rebootRequired || hasPendingReboot(context) || persistPendingReboot(
             context,

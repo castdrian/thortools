@@ -501,6 +501,52 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun keepsRecoveryRecordUntilCurrentThorStateIsReadable() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val baseline = ThorSnapshot.loading(OperationState())
+        var failRefresh = true
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot {
+                if (failRefresh) error("state read failed")
+                return baseline.copy(operation = operation, stateReadHealthy = true)
+            }
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult =
+                OperationResult(false, "unexpected backend execution")
+        }
+        try {
+            preferences.edit()
+                .putString(AppSettings.JOURNAL_OPERATION_KEY, ThorOperation.FLASH.name)
+                .putString(AppSettings.JOURNAL_MESSAGE_KEY, "flash was interrupted")
+                .commit()
+            val session = ThorSession(context, backend)
+            assertFalse(session.acknowledgeInterruptedOperation())
+            assertTrue(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
+            session.load()
+            assertFalse(session.snapshot.stateReadHealthy)
+            assertFalse(session.acknowledgeInterruptedOperation())
+            assertTrue(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
+            failRefresh = false
+            session.refresh()
+            assertTrue(session.snapshot.stateReadHealthy)
+            assertTrue(session.acknowledgeInterruptedOperation())
+            assertFalse(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
+        } finally {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+        }
+    }
+
+    @Test
     fun preservesRebootRequirementInInterruptedJournal() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val preferences = AppSettings.getSharedPrefs(context)

@@ -116,6 +116,7 @@ fun ThorControlScreen(
             }
             if (session.snapshot.operation.status == OperationStatus.INTERRUPTED) {
                 TextButton(
+                    enabled = session.canAcknowledgeInterruptedOperation(),
                     onClick = { session.acknowledgeInterruptedOperation() },
                     modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp).padding(horizontal = 12.dp),
                 ) {
