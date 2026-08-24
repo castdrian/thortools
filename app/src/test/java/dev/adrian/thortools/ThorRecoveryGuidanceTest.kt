@@ -100,6 +100,14 @@ class ThorRecoveryGuidanceTest {
             "Image operations are blocked until the Thor recovery folder is writable.",
             ThorRecoveryGuidance.forSnapshot(snapshot(backupDestinationWritable = false)),
         )
+        assertEquals(
+            "ThorTools support files are unavailable. Restart ThorTools before changing the Thor.",
+            ThorRecoveryGuidance.forSnapshot(
+                snapshot().copy(
+                    profile = snapshot().profile.copy(capabilities = setOf(ThorCapability.BATTERY_STATE)),
+                ),
+            ),
+        )
     }
 
     @Test
@@ -154,7 +162,10 @@ class ThorRecoveryGuidanceTest {
     ): ThorSnapshot {
         return ThorSnapshot(
             profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor")).copy(
-                capabilities = if (batteryAvailable) setOf(ThorCapability.BATTERY_STATE) else emptySet(),
+                capabilities = buildSet {
+                    add(ThorCapability.SUPPORT_FILES)
+                    if (batteryAvailable) add(ThorCapability.BATTERY_STATE)
+                },
             ),
             batteryPercent = batteryPercent,
             lcdDensity = 320,

@@ -11,6 +11,7 @@ import dev.adrian.thortools.utils.RecoveryImageInput
 import dev.adrian.thortools.utils.RecoveryManifestStore
 import dev.adrian.thortools.utils.FileUtils
 import dev.adrian.thortools.utils.SystemUtils
+import dev.adrian.thortools.utils.RootUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -130,6 +131,8 @@ class ThorToolsInstrumentedTest {
         assertEquals(ThorVariant.PRO, snapshot.profile.variant)
         assertTrue(snapshot.rootServiceAvailable)
         assertTrue(snapshot.backupDestinationWritable)
+        assertTrue(RootUtils.areSupportFilesReady(context))
+        assertTrue(snapshot.profile.supports(ThorCapability.SUPPORT_FILES))
         assertTrue(snapshot.displayDiagnostics.dualDisplayReady)
         assertEquals(ThorDisplayMode.DUAL, snapshot.displayDiagnostics.mode)
         assertEquals("1920 x 1080", snapshot.displayDiagnostics.upper.geometryLabel)

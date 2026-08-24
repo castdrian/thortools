@@ -36,6 +36,20 @@ class ThorOperationGuardTest {
     }
 
     @Test
+    fun blocksRecoveryScriptsWhenSupportFilesAreMissing() {
+        val withoutSupportFiles = snapshot().copy(
+            profile = snapshot().profile.copy(
+                capabilities = setOf(ThorCapability.BATTERY_STATE),
+            ),
+        )
+        assertEquals(
+            "ThorTools support files are unavailable; restart the app before changing the Thor",
+            ThorOperationGuard.validate(withoutSupportFiles, ThorOperation.BACKUP),
+        )
+        assertNull(ThorOperationGuard.validate(withoutSupportFiles, ThorOperation.SET_DPI))
+    }
+
+    @Test
     fun rejectsMutationsWhenTheLatestSystemReadFailed() {
         assertEquals(
             "Thor system state is unavailable; refresh before changing the Thor",
@@ -96,7 +110,7 @@ class ThorOperationGuardTest {
     fun rejectsImageOperationsWithoutBuildIdentity() {
         val snapshot = snapshot().copy(
             profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor")).copy(
-                capabilities = setOf(ThorCapability.BATTERY_STATE),
+                capabilities = setOf(ThorCapability.BATTERY_STATE, ThorCapability.SUPPORT_FILES),
             ),
         )
         assertEquals(
@@ -277,7 +291,10 @@ class ThorOperationGuardTest {
     ): ThorSnapshot {
         return ThorSnapshot(
             profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor", buildFingerprint = "test-build")).copy(
-                capabilities = if (batteryAvailable) setOf(ThorCapability.BATTERY_STATE) else emptySet(),
+                capabilities = buildSet {
+                    add(ThorCapability.SUPPORT_FILES)
+                    if (batteryAvailable) add(ThorCapability.BATTERY_STATE)
+                },
             ),
             batteryPercent = batteryPercent,
             lcdDensity = 320,

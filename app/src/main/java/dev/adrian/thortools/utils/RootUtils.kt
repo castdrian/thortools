@@ -38,6 +38,17 @@ object RootUtils {
     const val MODULE_DIR = "/data/adb/modules"
     private const val TAG = "RootUtils"
     private const val ASSET_SUBFOLDER = "app"
+    private val requiredSupportScripts = listOf(
+        "partition_path.sh",
+        "boot.backup.sh",
+        "boot.patch.sh",
+        "boot.flash.sh",
+        "boot.restore.sh",
+        "init_boot.backup.sh",
+        "init_boot.patch.sh",
+        "init_boot.flash.sh",
+        "init_boot.restore.sh",
+    )
 
     val isDeviceRooted: Boolean
         get() = checkRootMethod2() || checkRootMethod3()
@@ -110,6 +121,18 @@ object RootUtils {
             "THORTOOLS_WORKING_PATH=${shellQuote(workingPath)} THORTOOLS_LOG_PATH=${shellQuote(logPath)} " +
             "sh ${shellQuote(scriptPath)} $commandArguments >> ${shellQuote(logPath)} 2>&1; printf '%s' $?"
         return RootExec().executeAsRoot(command).getOrNull()
+    }
+
+    fun areSupportFilesReady(context: Context): Boolean = areSupportFilesReady(
+        File(context.filesDir, "$ASSET_SUBFOLDER/support"),
+    )
+
+    internal fun areSupportFilesReady(supportDirectory: File): Boolean {
+        val scriptsDirectory = File(supportDirectory, "subscripts")
+        return requiredSupportScripts.all { name ->
+            val file = File(scriptsDirectory, name)
+            file.isFile && file.length() > 0L
+        }
     }
 
     private fun shellQuote(value: String): String = "'${value.replace("'", "'\\''")}'"

@@ -18,6 +18,8 @@ object ThorRecoveryGuidance {
             "The last operation failed. Review its message and the capability checks before retrying."
         !snapshot.rootServiceAvailable ->
             "Diagnostics only until the Thor privileged root service is available."
+        !snapshot.profile.supports(ThorCapability.SUPPORT_FILES) ->
+            "ThorTools support files are unavailable. Restart ThorTools before changing the Thor."
         snapshot.moduleSyncState == ThorModuleSyncState.FAILED ->
             "ThorTools could not synchronize its Magisk module. Verify root access, then retry the module setting before rebooting."
         snapshot.moduleSyncState == ThorModuleSyncState.PENDING ->

@@ -188,6 +188,7 @@ data class ThorSnapshot(
             "boot partition" to supportsThorCapability(ThorCapability.BOOT_PARTITION),
             "Battery state" to supportsThorCapability(ThorCapability.BATTERY_STATE),
             "Backup destination" to supportsThorCapability(ThorCapability.BACKUP_DESTINATION),
+            "Support files" to supportsThorCapability(ThorCapability.SUPPORT_FILES),
         )
 
     private fun supportsThorCapability(capability: ThorCapability): Boolean =
@@ -288,6 +289,10 @@ object ThorOperationGuard {
         ThorOperation.FLASH,
         ThorOperation.RESTORE,
     )
+    private val supportFileOperations = imageOperations + setOf(
+        ThorOperation.SET_VOLUME_STEPS,
+        ThorOperation.SET_BOOT_ANIMATION,
+    )
 
     fun canCancel(operation: ThorOperation?): Boolean = operation?.cancellationSafe == true
 
@@ -314,6 +319,9 @@ object ThorOperationGuard {
         }
         if (operation.requiresRootService && !snapshot.rootServiceAvailable) {
             return "The Thor privileged root service is unavailable"
+        }
+        if (operation in supportFileOperations && !snapshot.profile.supports(ThorCapability.SUPPORT_FILES)) {
+            return "ThorTools support files are unavailable; restart the app before changing the Thor"
         }
         if (operation in imageOperations && !snapshot.profile.supports(ThorCapability.BATTERY_STATE)) {
             return "The Thor battery state is unavailable"
@@ -420,6 +428,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         val initBoot = rootService && RootUtils.hasPartition(context, "init_boot", properties.slot)
         val boot = rootService && RootUtils.hasPartition(context, "boot", properties.slot)
         val backupDestination = FileUtils.isBackupDestinationWritable(context)
+        val supportFiles = RootUtils.areSupportFilesReady(context)
         val availableBootSlots = PatchUtils.availableBootSlots(context)
         val moduleInstalled = rootService.takeIf { it }?.let { RootUtils.isThorToolsMagiskModuleInstalled(context) }
         val moduleSyncState = AppSettings.getModuleSyncState(prefs, moduleInstalled)
@@ -432,6 +441,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             if (boot) add(ThorCapability.BOOT_PARTITION)
             if (battery != null) add(ThorCapability.BATTERY_STATE)
             if (backupDestination) add(ThorCapability.BACKUP_DESTINATION)
+            if (supportFiles) add(ThorCapability.SUPPORT_FILES)
         }
         return ThorSnapshot(
             profile = DeviceProfile.detect(properties).copy(capabilities = capabilities),

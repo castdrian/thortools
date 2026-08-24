@@ -17,6 +17,7 @@ enum class ThorCapability {
     BOOT_PARTITION,
     BATTERY_STATE,
     BACKUP_DESTINATION,
+    SUPPORT_FILES,
 }
 
 data class DeviceProperties(

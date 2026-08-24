@@ -37,6 +37,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                 ThorCapability.BOOT_PARTITION,
                 ThorCapability.BATTERY_STATE,
                 ThorCapability.BACKUP_DESTINATION,
+                ThorCapability.SUPPORT_FILES,
             ),
         ),
         batteryPercent = 88,
