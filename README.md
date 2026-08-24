@@ -4,7 +4,7 @@ ThorTools is a Thor-first Android utility for the AYN Thor dual-screen handheld.
 
 ## Supported hardware
 
-ThorTools recognizes AYN Thor Lite, Base, Pro, and Max variants. The upper display is 1920 × 1080 at 120 Hz and the lower display is 1240 × 1080 at 60 Hz. The upper panel is a read-only status dashboard; the lower panel owns navigation, actions, and confirmations.
+ThorTools recognizes AYN Thor Lite, Base, Pro, and Max variants. The upper display is 1920 × 1080 at 120 Hz and the lower display is 1240 × 1080 at 60 Hz; Android may report the lower panel as its natural 1080 × 1240 orientation with a quarter-turn rotation. The upper panel is a read-only status dashboard; the lower panel owns navigation, actions, and confirmations.
 
 The app enters diagnostics-only mode on other devices or when the Thor privileged root service is unavailable. Every image operation rechecks the current active slot, partition nodes, Magisk state, battery level, and image size before it runs, while the privileged script verifies the image hash and partition capacity again immediately before a write.
 

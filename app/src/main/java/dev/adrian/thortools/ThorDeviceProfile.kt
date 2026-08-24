@@ -138,10 +138,13 @@ object DeviceProfile {
         widthPixels: Int,
         heightPixels: Int,
         rotation: Int = THOR_DISPLAY_ROTATION,
-    ): Boolean =
-        widthPixels == LOWER_WIDTH_PIXELS &&
-            heightPixels == LOWER_HEIGHT_PIXELS &&
+    ): Boolean = when {
+        widthPixels == LOWER_WIDTH_PIXELS && heightPixels == LOWER_HEIGHT_PIXELS ->
             rotation == THOR_DISPLAY_ROTATION
+        widthPixels == LOWER_HEIGHT_PIXELS && heightPixels == LOWER_WIDTH_PIXELS ->
+            rotation == 1 || rotation == 3
+        else -> false
+    }
 
     fun isThorUpperDisplay(
         widthPixels: Int,

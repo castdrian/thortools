@@ -49,7 +49,10 @@ class ThorDeviceProfileTest {
     fun classifiesThorDisplayGeometry() {
         assertTrue(DeviceProfile.isThorLowerDisplay(1240, 1080))
         assertTrue(DeviceProfile.isThorLowerDisplay(1240, 1080, DeviceProfile.THOR_DISPLAY_ROTATION))
+        assertTrue(DeviceProfile.isThorLowerDisplay(1080, 1240, 1))
+        assertTrue(DeviceProfile.isThorLowerDisplay(1080, 1240, 3))
         assertFalse(DeviceProfile.isThorLowerDisplay(1240, 1080, 1))
+        assertFalse(DeviceProfile.isThorLowerDisplay(1240, 1080, 2))
         assertFalse(DeviceProfile.isThorLowerDisplay(1080, 1240))
         assertFalse(DeviceProfile.isThorLowerDisplay(1920, 1080))
         assertEquals("lower", DeviceProfile.displayKind(1240, 1080))

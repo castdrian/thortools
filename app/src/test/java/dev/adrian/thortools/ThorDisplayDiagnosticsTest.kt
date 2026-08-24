@@ -36,6 +36,18 @@ class ThorDisplayDiagnosticsTest {
     }
 
     @Test
+    fun acceptsTheLowerPanelWhenTheDisplayStackReportsNaturalPortraitGeometry() {
+        val diagnostics = ThorDisplayDiagnostics(
+            upper = ThorDisplayPanel(0, 1920, 1080, 120f, 0),
+            lower = ThorDisplayPanel(1, 1080, 1240, 60f, 1),
+        )
+
+        assertTrue(diagnostics.dualDisplayReady)
+        assertEquals("1080 x 1240", diagnostics.lower.geometryLabel)
+        assertEquals("Rotated 90 deg", diagnostics.lower.orientationLabel)
+    }
+
+    @Test
     fun onlyReportsDualDisplayReadyForDistinctThorPanels() {
         assertFalse(
             ThorDisplayDiagnostics(

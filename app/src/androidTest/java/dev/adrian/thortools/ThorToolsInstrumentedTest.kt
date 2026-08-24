@@ -364,7 +364,11 @@ class ThorToolsInstrumentedTest {
         val displayManager = context.getSystemService(DisplayManager::class.java)
         assertTrue(
             displayManager.displays.any { display ->
-                DeviceProfile.isThorLowerDisplay(display.mode.physicalWidth, display.mode.physicalHeight)
+                DeviceProfile.isThorLowerDisplay(
+                    display.mode.physicalWidth,
+                    display.mode.physicalHeight,
+                    display.rotation,
+                )
             },
         )
     }
