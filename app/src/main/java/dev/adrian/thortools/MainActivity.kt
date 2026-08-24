@@ -35,7 +35,8 @@ class MainActivity : ComponentActivity() {
     private var secondaryPresentationRequested = false
     private var activityResumed = false
     private var sessionLoaded = false
-    private var hasThorLowerDisplay by mutableStateOf(false)
+    private var primaryDisplayRole by mutableStateOf(ThorDisplayRole.UNKNOWN)
+    private var secondaryDisplayShown by mutableStateOf(false)
 
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) {
@@ -61,7 +62,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         session = ThorSession(this)
         displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        hasThorLowerDisplay = findThorLowerDisplay() != null
+        updatePrimaryDisplayRole()
         configureThorWindow(window)
         lifecycleScope.launch {
             session.load()
@@ -69,10 +70,15 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             ThorToolsTheme {
-                if (hasThorLowerDisplay) {
+                if (secondaryDisplayShown && primaryDisplayRole == ThorDisplayRole.UPPER) {
                     ThorDashboardScreen(session, this@MainActivity)
                 } else {
-                    ThorControlScreen(session, this@MainActivity, lifecycleScope)
+                    ThorControlScreen(
+                        session,
+                        this@MainActivity,
+                        lifecycleScope,
+                        isLowerDisplay = primaryDisplayRole == ThorDisplayRole.LOWER,
+                    )
                 }
             }
         }
@@ -87,6 +93,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         activityResumed = true
+        updatePrimaryDisplayRole()
         if (sessionLoaded) {
             lifecycleScope.launch { session.refresh() }
         }
@@ -105,6 +112,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        updatePrimaryDisplayRole()
         requestSecondaryDisplay()
     }
 
@@ -127,6 +135,7 @@ class MainActivity : ComponentActivity() {
 
     private fun requestSecondaryDisplay() {
         secondaryPresentationRequested = true
+        updatePrimaryDisplayRole()
         secondaryDisplayRetry?.cancel()
         secondaryDisplayRetry = null
         secondaryDisplayRetryCount = 0
@@ -135,7 +144,8 @@ class MainActivity : ComponentActivity() {
 
     private fun showSecondaryDisplay() {
         if (!secondaryPresentationRequested || !activityResumed || isFinishing) return
-        val display = findThorLowerDisplay()
+        updatePrimaryDisplayRole()
+        val display = findThorSecondaryDisplay()
         if (display == null) {
             dismissSecondaryDisplay()
             scheduleSecondaryDisplayRetry()
@@ -144,21 +154,26 @@ class MainActivity : ComponentActivity() {
         secondaryDisplayRetry?.cancel()
         secondaryDisplayRetry = null
         secondaryDisplayRetryCount = 0
-        hasThorLowerDisplay = true
+        val role = display.thorDisplayRole()
+        if (role == ThorDisplayRole.UNKNOWN) {
+            dismissSecondaryDisplay()
+            scheduleSecondaryDisplayRetry()
+            return
+        }
         secondaryPresentation?.let { existing ->
-            if (existing.display.displayId == display.displayId && existing.isShowing) {
+            if (existing.display.displayId == display.displayId && existing.role == role && existing.isShowing) {
                 existing.requestInputFocus()
                 return
             }
             existing.dismiss()
         }
-        hasThorLowerDisplay = false
-        val presentation = ThorPresentation(this, display, session)
+        secondaryDisplayShown = false
+        val presentation = ThorPresentation(this, display, session, role)
         secondaryPresentation = presentation
         presentation.setOnDismissListener {
             if (secondaryPresentation === presentation) {
                 secondaryPresentation = null
-                hasThorLowerDisplay = false
+                secondaryDisplayShown = false
                 scheduleSecondaryDisplayRetry()
             }
         }
@@ -166,36 +181,44 @@ class MainActivity : ComponentActivity() {
             presentation.show()
             presentation.requestInputFocus()
             presentation.window?.decorView?.postDelayed({ presentation.requestInputFocus() }, 250L)
-            hasThorLowerDisplay = secondaryPresentation === presentation && presentation.isShowing
+            secondaryDisplayShown = secondaryPresentation === presentation && presentation.isShowing
         } catch (_: WindowManager.BadTokenException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
-            hasThorLowerDisplay = false
+            secondaryDisplayShown = false
             scheduleSecondaryDisplayRetry()
         } catch (_: WindowManager.InvalidDisplayException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
-            hasThorLowerDisplay = false
+            secondaryDisplayShown = false
             scheduleSecondaryDisplayRetry()
         } catch (_: RuntimeException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
-            hasThorLowerDisplay = false
+            secondaryDisplayShown = false
             scheduleSecondaryDisplayRetry()
         }
     }
 
-    private fun findThorLowerDisplay(): Display? = runCatching { displayManager?.displays?.toList().orEmpty() }
-        .getOrDefault(emptyList())
-        .firstOrNull { candidate ->
-            candidate.displayId != Display.DEFAULT_DISPLAY &&
-                candidate.modeOrNull()?.let { mode ->
-                    candidate.rotationOrNull()?.let { rotation ->
-                        DeviceProfile.isThorLowerDisplay(
-                            mode.physicalWidth,
-                            mode.physicalHeight,
-                            rotation,
-                        )
-                    }
-                } == true
+    private fun updatePrimaryDisplayRole() {
+        primaryDisplayRole = findActivityDisplay()?.thorDisplayRole() ?: ThorDisplayRole.UNKNOWN
+    }
+
+    private fun findActivityDisplay(): Display? = runCatching {
+        window.decorView.display
+    }.getOrNull() ?: runCatching {
+        displayManager?.getDisplay(Display.DEFAULT_DISPLAY)
+    }.getOrNull()
+
+    private fun findThorSecondaryDisplay(): Display? {
+        val displays = runCatching { displayManager?.displays?.toList().orEmpty() }
+            .getOrDefault(emptyList())
+        val activityDisplayId = findActivityDisplay()?.displayId
+        val desiredRole = primaryDisplayRole.opposite()
+        val candidates = displays.filter { it.displayId != activityDisplayId }
+        if (desiredRole != ThorDisplayRole.UNKNOWN) {
+            return candidates.firstOrNull { it.thorDisplayRole() == desiredRole }
         }
+        return candidates.firstOrNull { it.thorDisplayRole() == ThorDisplayRole.LOWER }
+            ?: candidates.firstOrNull { it.thorDisplayRole() == ThorDisplayRole.UPPER }
+    }
 
     private fun scheduleDisplayRefresh() {
         if (!sessionLoaded || !activityResumed || isFinishing) return
@@ -226,7 +249,7 @@ class MainActivity : ComponentActivity() {
         }
         secondaryPresentation?.dismiss()
         secondaryPresentation = null
-        hasThorLowerDisplay = false
+        secondaryDisplayShown = false
     }
 }
 
@@ -234,10 +257,17 @@ private fun Display.modeOrNull(): Display.Mode? = runCatching { mode }.getOrNull
 
 private fun Display.rotationOrNull(): Int? = runCatching { rotation }.getOrNull()
 
+private fun Display.thorDisplayRole(): ThorDisplayRole = modeOrNull()?.let { mode ->
+    rotationOrNull()?.let { rotation ->
+        ThorDisplayRole.fromGeometry(mode.physicalWidth, mode.physicalHeight, rotation)
+    }
+} ?: ThorDisplayRole.UNKNOWN
+
 private class ThorPresentation(
     private val activity: ComponentActivity,
     display: Display,
     private val session: ThorSession,
+    val role: ThorDisplayRole,
 ) : Presentation(activity, display) {
     private var contentView: ComposeView? = null
 
@@ -253,8 +283,12 @@ private class ThorPresentation(
             isFocusable = true
             isFocusableInTouchMode = true
             setContent {
-                ThorToolsTheme(lowerDisplay = true) {
-                    ThorControlScreen(session, context, activity.lifecycleScope, isLowerDisplay = true)
+                ThorToolsTheme(lowerDisplay = role == ThorDisplayRole.LOWER) {
+                    if (role == ThorDisplayRole.LOWER) {
+                        ThorControlScreen(session, context, activity.lifecycleScope, isLowerDisplay = true)
+                    } else {
+                        ThorDashboardScreen(session, context)
+                    }
                 }
             }
         }
