@@ -151,10 +151,14 @@ object RecoveryManifestStore {
         partition: String,
         localPath: String,
         buildIdentity: String,
+        downloadPath: String? = null,
     ): String? {
         val record = find(context, slot, partition, patched = false, buildIdentity = buildIdentity) ?: return null
         if (!record.matches(slot, partition, expectedPatched = false, buildIdentity)) return null
-        return record.sha256.takeIf { verifyLocal(record, localPath) }
+        return record.sha256.takeIf {
+            verifyPath(context, record, localPath) ||
+                (downloadPath != null && verifyPath(context, record, downloadPath))
+        }
     }
 
     fun hasVerifiedStockImage(
@@ -194,6 +198,7 @@ object RecoveryManifestStore {
         localPath: String,
         stockPath: String,
         buildIdentity: String,
+        stockDownloadPath: String? = null,
     ): Boolean = verifiedPatchedHash(
         context,
         slot,
@@ -201,6 +206,7 @@ object RecoveryManifestStore {
         localPath,
         stockPath,
         buildIdentity,
+        stockDownloadPath,
     ) != null
 
     fun verifiedPatchedHash(
@@ -210,6 +216,7 @@ object RecoveryManifestStore {
         localPath: String,
         stockPath: String,
         buildIdentity: String,
+        stockDownloadPath: String? = null,
     ): String? {
         val patched = find(context, slot, partition, patched = true, buildIdentity = buildIdentity) ?: return null
         val stockHash = verifiedStockHash(
@@ -218,6 +225,7 @@ object RecoveryManifestStore {
             partition,
             stockPath,
             buildIdentity,
+            stockDownloadPath,
         ) ?: return null
         if (!patched.matches(slot, partition, expectedPatched = true, buildIdentity)) return null
         if (patched.sourceSha256 != stockHash) return null
@@ -244,11 +252,15 @@ object RecoveryManifestStore {
                 stockRecord != null &&
                     record.sourceSha256.isNotBlank() &&
                     record.sourceSha256 == stockRecord.sha256 &&
-                    verifyPath(
+                    (verifyPath(
                         context,
                         stockRecord,
                         FileUtils.getPathBackup(context, "/${File(stockRecord.fileName).name}"),
-                    )
+                    ) || verifyPath(
+                        context,
+                        stockRecord,
+                        FileUtils.getPathDownload("/${File(stockRecord.fileName).name}"),
+                    ))
             }
             RecoveryImageStatus(
                 record = record,

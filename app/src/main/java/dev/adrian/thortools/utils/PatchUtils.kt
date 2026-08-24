@@ -73,6 +73,7 @@ object PatchUtils {
             localPath = patchedPath(context, partition, slot),
             stockPath = stockPath(context, partition, slot),
             buildIdentity = currentBuildIdentity(),
+            stockDownloadPath = downloadPath(partition, slot),
         )
     }.toSet()
 
@@ -113,6 +114,7 @@ object PatchUtils {
             localPath = patchedPath(context, partition, slot),
             stockPath = stockPath(context, partition, slot),
             buildIdentity = currentBuildIdentity(),
+            stockDownloadPath = downloadPath(partition, slot),
         )
     }
 
@@ -163,6 +165,7 @@ object PatchUtils {
                 localPath = patchedPath(context, partition, slot),
                 stockPath = stockPath(context, partition, slot),
                 buildIdentity = buildIdentity,
+                stockDownloadPath = downloadPath(partition, slot),
             ) ?: return PartitionWriteResult(false, false)
         return PartitionWriteResult(
             success = RootUtils.runRootScript(context, "$partition.flash.sh", listOf(slot, patchedHash, buildIdentity)) == "0",

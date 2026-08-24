@@ -449,6 +449,87 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun keepsPatchedImageReadyWhenOnlyTheVerifiedDownloadStockCopyRemains() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val directory = context.getExternalFilesDir(null)
+            ?: error("Thor recovery directory is unavailable")
+        val suffix = System.currentTimeMillis()
+        val stock = File(directory, "download-source-stock-$suffix.img")
+        val patched = File(directory, "download-source-patched-$suffix.img")
+        val downloadStock = File(FileUtils.getPathDownload("/${stock.name}"))
+        preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+        try {
+            stock.writeText("stock")
+            patched.writeText("patched")
+            downloadStock.parentFile?.mkdirs()
+            downloadStock.writeText("stock")
+            val stockHash = RecoveryManifestStore.hashFile(stock.path) ?: error("stock hash missing")
+            assertTrue(
+                RecoveryManifestStore.recordLocalImages(
+                    context,
+                    listOf(
+                        RecoveryImageInput(
+                            fileName = stock.name,
+                            slot = "_a",
+                            partition = "boot",
+                            patched = false,
+                            path = stock.path,
+                            buildIdentity = "download-source-build",
+                        ),
+                        RecoveryImageInput(
+                            fileName = patched.name,
+                            slot = "_a",
+                            partition = "boot",
+                            patched = true,
+                            path = patched.path,
+                            buildIdentity = "download-source-build",
+                            sourceSha256 = stockHash,
+                        ),
+                    ),
+                ),
+            )
+            stock.delete()
+            assertTrue(
+                RecoveryManifestStore.hasVerifiedPatchedImage(
+                    context = context,
+                    slot = "_a",
+                    partition = "boot",
+                    localPath = patched.path,
+                    stockPath = stock.path,
+                    buildIdentity = "download-source-build",
+                    stockDownloadPath = downloadStock.path,
+                ),
+            )
+            var status = RecoveryManifestStore.statuses(context, "download-source-build")
+                .single { it.record.patched }
+            assertTrue(status.sourceStockVerified)
+            assertTrue(status.patchedImageReady)
+            downloadStock.writeText("tampered")
+            assertFalse(
+                RecoveryManifestStore.hasVerifiedPatchedImage(
+                    context = context,
+                    slot = "_a",
+                    partition = "boot",
+                    localPath = patched.path,
+                    stockPath = stock.path,
+                    buildIdentity = "download-source-build",
+                    stockDownloadPath = downloadStock.path,
+                ),
+            )
+            status = RecoveryManifestStore.statuses(context, "download-source-build")
+                .single { it.record.patched }
+            assertFalse(status.sourceStockVerified)
+            assertFalse(status.patchedImageReady)
+        } finally {
+            preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+            stock.delete()
+            patched.delete()
+            downloadStock.delete()
+        }
+    }
+
+    @Test
     fun thorAvdExposesLowerDisplayGeometry() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val displayManager = context.getSystemService(DisplayManager::class.java)
