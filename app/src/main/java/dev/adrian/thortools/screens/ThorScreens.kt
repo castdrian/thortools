@@ -420,9 +420,16 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
     var volumeSteps by remember(snapshot.volumeSteps) { mutableStateOf(snapshot.volumeSteps.toFloat().coerceIn(AppSettings.VOLUME_STEPS_MIN.toFloat(), AppSettings.VOLUME_STEPS_MAX.toFloat())) }
     var pendingTweak by remember { mutableStateOf<ThorOperation?>(null) }
     val skipBootAnimation = AppSettings.getSkipBootAnimation(prefs)
-    val enabled = snapshot.profile.isThor && snapshot.rootServiceAvailable
     val actionReady = snapshot.operation.status !in setOf(OperationStatus.RUNNING, OperationStatus.INTERRUPTED)
-    val moduleReady = actionReady && ThorOperationGuard.validate(snapshot, ThorOperation.SET_VOLUME_STEPS) == null
+    val thorReady = snapshot.profile.isThor
+    val moduleAvailable = thorReady &&
+        snapshot.stateReadHealthy &&
+        snapshot.rootServiceAvailable &&
+        snapshot.rooted &&
+        snapshot.magiskInstalled &&
+        snapshot.profile.supports(ThorCapability.SUPPORT_FILES)
+    fun operationReady(operation: ThorOperation): Boolean =
+        actionReady && ThorOperationGuard.validate(snapshot, operation) == null
 
     LaunchedEffect(
         pendingTweak,
@@ -452,7 +459,7 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                     onValueChange = { dpi = it },
                     valueRange = AppSettings.DPI_MIN.toFloat()..AppSettings.DPI_MAX.toFloat(),
                     steps = AppSettings.DPI_MAX - AppSettings.DPI_MIN - 1,
-                    enabled = enabled && actionReady,
+                    enabled = operationReady(ThorOperation.SET_DPI),
                     onValueChangeFinished = {
                         pendingTweak = ThorOperation.SET_DPI
                         session.run(operationScope, ThorOperation.SET_DPI, dpi.toInt().toString())
@@ -467,7 +474,7 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1f, 0.5f, 0f).forEach { value ->
                         OutlinedButton(
-                            enabled = enabled && actionReady,
+                            enabled = operationReady(ThorOperation.SET_ANIMATION),
                             onClick = { session.run(operationScope, ThorOperation.SET_ANIMATION, value.toString()) },
                             modifier = Modifier.weight(1f).heightIn(min = 52.dp),
                         ) {
@@ -477,7 +484,7 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                 }
             }
         }
-        if (moduleReady) {
+        if (moduleAvailable) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Volume steps: ${volumeSteps.toInt()}")
@@ -486,7 +493,7 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                         onValueChange = { volumeSteps = it },
                         valueRange = AppSettings.VOLUME_STEPS_MIN.toFloat()..AppSettings.VOLUME_STEPS_MAX.toFloat(),
                         steps = AppSettings.VOLUME_STEPS_MAX - AppSettings.VOLUME_STEPS_MIN - 1,
-                        enabled = enabled && actionReady,
+                        enabled = operationReady(ThorOperation.SET_VOLUME_STEPS),
                         onValueChangeFinished = {
                             pendingTweak = ThorOperation.SET_VOLUME_STEPS
                             session.run(operationScope, ThorOperation.SET_VOLUME_STEPS, volumeSteps.toInt().toString())
@@ -506,7 +513,7 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                     }
                     Switch(
                         checked = skipBootAnimation,
-                        enabled = enabled && actionReady,
+                        enabled = operationReady(ThorOperation.SET_BOOT_ANIMATION),
                         onCheckedChange = {
                             session.run(operationScope, ThorOperation.SET_BOOT_ANIMATION, it.toString())
                         },
@@ -514,8 +521,16 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
                 }
             }
         }
-        if (!enabled) Text("The Thor privileged root service is required before system changes can be applied.", color = MaterialTheme.colorScheme.error)
-        if (enabled && !moduleReady) Text("Install Magisk and complete root setup before changing volume steps or boot animation.", color = MaterialTheme.colorScheme.error)
+        when {
+            !thorReady -> Text("This device is in diagnostics-only mode because it is not an AYN Thor.", color = MaterialTheme.colorScheme.error)
+            !snapshot.stateReadHealthy -> Text("Thor system state is unavailable; refresh before changing the Thor.", color = MaterialTheme.colorScheme.error)
+            !snapshot.rootServiceAvailable -> Text("The Thor privileged root service is required before system changes can be applied.", color = MaterialTheme.colorScheme.error)
+            !snapshot.rooted || !snapshot.magiskInstalled -> Text("Install Magisk and complete root setup before changing volume steps or boot animation.", color = MaterialTheme.colorScheme.error)
+            !snapshot.profile.supports(ThorCapability.SUPPORT_FILES) -> Text("ThorTools support files are unavailable; restart the app before changing module settings.", color = MaterialTheme.colorScheme.error)
+            else -> ThorOperationGuard.validate(snapshot, ThorOperation.SET_VOLUME_STEPS)?.let { reason ->
+                Text(reason, color = MaterialTheme.colorScheme.error)
+            }
+        }
         when (snapshot.moduleSyncState) {
             ThorModuleSyncState.PENDING -> Text("ThorTools module synchronization is pending. Keep the Thor rooted and wait for the dashboard to report it synced.", color = MaterialTheme.colorScheme.error)
             ThorModuleSyncState.FAILED -> Text("ThorTools could not synchronize its Magisk module. Verify root access and retry the module setting.", color = MaterialTheme.colorScheme.error)
