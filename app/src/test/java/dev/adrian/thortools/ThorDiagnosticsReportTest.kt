@@ -19,6 +19,9 @@ class ThorDiagnosticsReportTest {
                 DeviceProperties(
                     manufacturer = "AYN",
                     model = "AYN Thor Pro",
+                    systemDevice = "thor",
+                    systemName = "Thor",
+                    buildProduct = "odin2thor",
                     serial = "thor-serial",
                     buildFingerprint = "ayn/thor/pro",
                 ),
@@ -48,6 +51,9 @@ class ThorDiagnosticsReportTest {
 
         assertTrue(report.contains("device.isThor=true"))
         assertTrue(report.contains("model=AYN Thor Pro"))
+        assertTrue(report.contains("systemDevice=thor"))
+        assertTrue(report.contains("systemName=Thor"))
+        assertTrue(report.contains("buildProduct=odin2thor"))
         assertTrue(report.contains("serial=thor-serial"))
         assertTrue(report.contains("activeSlot=_b"))
         assertTrue(report.contains("operation=FLASH"))

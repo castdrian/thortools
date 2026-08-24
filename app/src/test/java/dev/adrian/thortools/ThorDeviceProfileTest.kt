@@ -17,6 +17,7 @@ class ThorDeviceProfileTest {
         assertTrue(DeviceProfile.detect(DeviceProperties(product = "AYNThorMax")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(product = "AYN Thor Max")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(device = "odin2thor")).isThor)
+        assertTrue(DeviceProfile.detect(DeviceProperties(buildProduct = "odin2thor")).isThor)
         assertEquals(ThorVariant.PRO, DeviceProfile.detect(DeviceProperties(device = "odin2thorpro")).variant)
         assertEquals(ThorVariant.PRO, DeviceProfile.detect(DeviceProperties(model = "AYN/Thor Pro")).variant)
         assertEquals(ThorVariant.LITE, DeviceProfile.detect(DeviceProperties(model = "AYN.Thor Lite")).variant)
@@ -140,6 +141,29 @@ class ThorDeviceProfileTest {
         assertEquals("_b", properties.slot)
         assertTrue(DeviceProfile.detect(properties).isThor)
         assertEquals(ThorVariant.LITE, DeviceProfile.detect(properties).variant)
+    }
+
+    @Test
+    fun readsLineageSystemIdentityFallbacks() {
+        val values = mapOf(
+            "ro.product.system.manufacturer" to "AYN",
+            "ro.product.system.brand" to "AYN",
+            "ro.product.system.model" to "Thor",
+            "ro.product.system.device" to "thor",
+            "ro.product.system.name" to "Thor",
+            "ro.build.product" to "odin2thor",
+        )
+        val properties = SystemUtils.getDeviceProperties { values[it].orEmpty() }
+
+        assertEquals("AYN", properties.manufacturer)
+        assertEquals("AYN", properties.brand)
+        assertEquals("Thor", properties.model)
+        assertEquals("thor", properties.device)
+        assertEquals("Thor", properties.product)
+        assertEquals("thor", properties.systemDevice)
+        assertEquals("Thor", properties.systemName)
+        assertEquals("odin2thor", properties.buildProduct)
+        assertTrue(DeviceProfile.detect(properties).isThor)
     }
 
     @Test

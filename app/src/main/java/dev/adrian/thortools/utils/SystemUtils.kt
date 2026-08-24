@@ -35,11 +35,14 @@ object SystemUtils {
             .firstOrNull(String::isNotBlank)
             .orEmpty()
         return DeviceProperties(
-            manufacturer = firstValue("ro.product.manufacturer", "ro.product.vendor.manufacturer", "ro.product.odm.manufacturer"),
-            brand = firstValue("ro.product.brand", "ro.product.vendor.brand", "ro.product.odm.brand"),
+            manufacturer = firstValue("ro.product.manufacturer", "ro.product.vendor.manufacturer", "ro.product.odm.manufacturer", "ro.product.system.manufacturer"),
+            brand = firstValue("ro.product.brand", "ro.product.vendor.brand", "ro.product.odm.brand", "ro.product.system.brand"),
             model = firstValue("ro.product.model", "ro.product.vendor.model", "ro.product.odm.model", "ro.product.system.model"),
-            device = firstValue("ro.product.device", "ro.product.vendor.device", "ro.product.odm.device"),
-            product = firstValue("ro.product.name", "ro.product.vendor.name", "ro.product.odm.name", "ro.product.product.name"),
+            device = firstValue("ro.product.device", "ro.product.vendor.device", "ro.product.odm.device", "ro.product.system.device", "ro.build.product"),
+            product = firstValue("ro.product.name", "ro.product.vendor.name", "ro.product.odm.name", "ro.product.product.name", "ro.product.system.name"),
+            systemDevice = firstValue("ro.product.system.device"),
+            systemName = firstValue("ro.product.system.name"),
+            buildProduct = firstValue("ro.build.product"),
             board = firstValue("ro.product.board", "ro.product.vendor.board", "ro.board.platform"),
             hardware = firstValue("ro.hardware", "ro.boot.hardware", "ro.hardware.chipname"),
             soc = firstValue("ro.soc.model", "ro.soc.manufacturer", "ro.board.platform", "ro.boot.hardware"),
