@@ -658,7 +658,11 @@ private fun AboutPanel(context: Context, snapshot: ThorSnapshot) {
 private fun DataLine(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontWeight = FontWeight.Bold, modifier = Modifier.width(150.dp))
-        Text(value.ifBlank { "Unavailable" }, modifier = Modifier.weight(1f))
+        Text(
+            value.ifBlank { "Unavailable" },
+            modifier = Modifier.weight(1f).padding(start = 12.dp),
+            softWrap = true,
+        )
     }
 }
 
