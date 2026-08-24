@@ -72,6 +72,13 @@ class PatchUtilsTest {
     }
 
     @Test
+    fun prefersTheSamePartitionFromTheCapturedSlotLayout() {
+        assertEquals("init_boot", PatchUtils.preferredPartition(setOf("boot", "init_boot")))
+        assertEquals("boot", PatchUtils.preferredPartition(setOf("boot")))
+        assertNull(PatchUtils.preferredPartition(emptySet()))
+    }
+
+    @Test
     fun acceptsOnlyAStableNormalizedSlot() {
         assertEquals("_a", PatchUtils.normalizeStableSlot("a", "_a"))
         assertEquals("_b", PatchUtils.normalizeStableSlot("_b", "b"))

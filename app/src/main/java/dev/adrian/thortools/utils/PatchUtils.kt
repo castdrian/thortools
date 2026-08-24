@@ -58,60 +58,119 @@ object PatchUtils {
         slot.takeIf { partitions.isNotEmpty() }?.let { it to partitions }
     }.toMap()
 
-    fun stockBackupSlots(context: Context): Set<String> = slots.filter { slot ->
-        val partition = preferredPartition(context, slot) ?: return@filter false
+    fun stockBackupSlots(context: Context): Set<String> = stockBackupSlots(
+        context,
+        availablePartitionsBySlot(context),
+        currentBuildIdentity(),
+    )
+
+    fun stockBackupSlots(
+        context: Context,
+        availablePartitionsBySlot: Map<String, Set<String>>,
+        buildIdentity: String,
+    ): Set<String> = slots.filter { slot ->
+        val partition = preferredPartition(availablePartitionsBySlot[slot].orEmpty()) ?: return@filter false
         RecoveryManifestStore.hasVerifiedStockCopies(
             context = context,
             slot = slot,
             partition = partition,
             localPath = stockPath(context, partition, slot),
             downloadPath = downloadPath(partition, slot),
-            buildIdentity = currentBuildIdentity(),
+            buildIdentity = buildIdentity,
         )
     }.toSet()
 
-    fun stockRecoverySlots(context: Context): Set<String> = slots.filter { slot ->
-        val partition = preferredPartition(context, slot) ?: return@filter false
+    fun stockRecoverySlots(context: Context): Set<String> = stockRecoverySlots(
+        context,
+        availablePartitionsBySlot(context),
+        currentBuildIdentity(),
+    )
+
+    fun stockRecoverySlots(
+        context: Context,
+        availablePartitionsBySlot: Map<String, Set<String>>,
+        buildIdentity: String,
+    ): Set<String> = slots.filter { slot ->
+        val partition = preferredPartition(availablePartitionsBySlot[slot].orEmpty()) ?: return@filter false
         RecoveryManifestStore.hasVerifiedStockImage(
             context = context,
             slot = slot,
             partition = partition,
             localPath = stockPath(context, partition, slot),
             downloadPath = downloadPath(partition, slot),
-            buildIdentity = currentBuildIdentity(),
+            buildIdentity = buildIdentity,
         )
     }.toSet()
 
-    fun patchedBackupSlots(context: Context): Set<String> = slots.filter { slot ->
-        val partition = preferredPartition(context, slot) ?: return@filter false
+    fun patchedBackupSlots(context: Context): Set<String> = patchedBackupSlots(
+        context,
+        availablePartitionsBySlot(context),
+        currentBuildIdentity(),
+    )
+
+    fun patchedBackupSlots(
+        context: Context,
+        availablePartitionsBySlot: Map<String, Set<String>>,
+        buildIdentity: String,
+    ): Set<String> = slots.filter { slot ->
+        val partition = preferredPartition(availablePartitionsBySlot[slot].orEmpty()) ?: return@filter false
         RecoveryManifestStore.hasVerifiedPatchedImage(
             context = context,
             slot = slot,
             partition = partition,
             localPath = patchedPath(context, partition, slot),
             stockPath = stockPath(context, partition, slot),
-            buildIdentity = currentBuildIdentity(),
+            buildIdentity = buildIdentity,
             stockDownloadPath = downloadPath(partition, slot),
         )
     }.toSet()
 
     fun checkActiveSlotBackupExists(context: Context): Boolean {
         val slot = validSlot() ?: return false
-        val partition = preferredPartition(context, slot) ?: return false
+        return checkActiveSlotBackupExists(
+            context,
+            slot,
+            availablePartitionsBySlot(context),
+            currentBuildIdentity(),
+        )
+    }
+
+    fun checkActiveSlotBackupExists(
+        context: Context,
+        activeSlot: String,
+        availablePartitionsBySlot: Map<String, Set<String>>,
+        buildIdentity: String,
+    ): Boolean {
+        val slot = DeviceProfile.normalizeSlot(activeSlot).takeIf { it.isNotBlank() } ?: return false
+        val partition = preferredPartition(availablePartitionsBySlot[slot].orEmpty()) ?: return false
         return RecoveryManifestStore.hasVerifiedStockImage(
             context = context,
             slot = slot,
             partition = partition,
             localPath = stockPath(context, partition, slot),
             downloadPath = downloadPath(partition, slot),
-            buildIdentity = currentBuildIdentity(),
+            buildIdentity = buildIdentity,
         )
     }
 
     fun checkActiveSlotRestoreExists(context: Context): Boolean {
         val slot = validSlot() ?: return false
-        val partition = preferredPartition(context, slot) ?: return false
-        val buildIdentity = currentBuildIdentity()
+        return checkActiveSlotRestoreExists(
+            context,
+            slot,
+            availablePartitionsBySlot(context),
+            currentBuildIdentity(),
+        )
+    }
+
+    fun checkActiveSlotRestoreExists(
+        context: Context,
+        activeSlot: String,
+        availablePartitionsBySlot: Map<String, Set<String>>,
+        buildIdentity: String,
+    ): Boolean {
+        val slot = DeviceProfile.normalizeSlot(activeSlot).takeIf { it.isNotBlank() } ?: return false
+        val partition = preferredPartition(availablePartitionsBySlot[slot].orEmpty()) ?: return false
         return RecoveryManifestStore.hasVerifiedStockImage(
             context = context,
             slot = slot,
@@ -124,14 +183,29 @@ object PatchUtils {
 
     fun checkBootMagiskExists(context: Context): Boolean {
         val slot = validSlot() ?: return false
-        val partition = preferredPartition(context, slot) ?: return false
+        return checkBootMagiskExists(
+            context,
+            slot,
+            availablePartitionsBySlot(context),
+            currentBuildIdentity(),
+        )
+    }
+
+    fun checkBootMagiskExists(
+        context: Context,
+        activeSlot: String,
+        availablePartitionsBySlot: Map<String, Set<String>>,
+        buildIdentity: String,
+    ): Boolean {
+        val slot = DeviceProfile.normalizeSlot(activeSlot).takeIf { it.isNotBlank() } ?: return false
+        val partition = preferredPartition(availablePartitionsBySlot[slot].orEmpty()) ?: return false
         return RecoveryManifestStore.hasVerifiedPatchedImage(
             context = context,
             slot = slot,
             partition = partition,
             localPath = patchedPath(context, partition, slot),
             stockPath = stockPath(context, partition, slot),
-            buildIdentity = currentBuildIdentity(),
+            buildIdentity = buildIdentity,
             stockDownloadPath = downloadPath(partition, slot),
         )
     }
@@ -310,9 +384,16 @@ object PatchUtils {
     private fun stableSlot(expectedSlot: String): String? =
         normalizeStableSlot(expectedSlot, SystemUtils.getPropSlot())
 
-    private fun preferredPartition(context: Context, slot: String): String? = selectPartition(
-        initBootAvailable = RootUtils.hasPartition(context, "init_boot", slot),
-        bootAvailable = RootUtils.hasPartition(context, "boot", slot),
+    private fun preferredPartition(context: Context, slot: String): String? = preferredPartition(
+        buildSet {
+            if (RootUtils.hasPartition(context, "init_boot", slot)) add("init_boot")
+            if (RootUtils.hasPartition(context, "boot", slot)) add("boot")
+        },
+    )
+
+    internal fun preferredPartition(partitions: Set<String>): String? = selectPartition(
+        initBootAvailable = "init_boot" in partitions,
+        bootAvailable = "boot" in partitions,
     )
 
     internal fun selectPartition(initBootAvailable: Boolean, bootAvailable: Boolean): String? = when {
