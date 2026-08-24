@@ -136,6 +136,23 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun debugBackendMirrorsRuntimeThorDisplayIdentityAndRefreshRate() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val displayManager = context.getSystemService(DisplayManager::class.java)
+        val upper = displayManager.displays.firstOrNull { display ->
+            DeviceProfile.isThorUpperDisplay(display.mode.physicalWidth, display.mode.physicalHeight, display.rotation)
+        } ?: error("Thor upper display is missing")
+        val lower = displayManager.displays.firstOrNull { display ->
+            DeviceProfile.isThorLowerDisplay(display.mode.physicalWidth, display.mode.physicalHeight, display.rotation)
+        } ?: error("Thor lower display is missing")
+        val snapshot = SystemBackendFactory.create(context).snapshot()
+        assertEquals(upper.displayId, snapshot.displayDiagnostics.upper.displayId)
+        assertEquals(lower.displayId, snapshot.displayDiagnostics.lower.displayId)
+        assertEquals(upper.mode.refreshRate, snapshot.displayDiagnostics.upper.refreshRateHz, 0.01f)
+        assertEquals(lower.mode.refreshRate, snapshot.displayDiagnostics.lower.refreshRateHz, 0.01f)
+    }
+
+    @Test
     fun debugBackendPersistsDisplayTweaksAcrossSnapshots() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val backend = SystemBackendFactory.create(context)

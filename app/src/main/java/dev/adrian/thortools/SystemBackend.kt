@@ -336,6 +336,51 @@ object ThorOperationGuard {
     }
 }
 
+internal fun readThorDisplayDiagnostics(context: Context): ThorDisplayDiagnostics {
+    val displayManager = context.getSystemService(DisplayManager::class.java) ?: return ThorDisplayDiagnostics()
+    val displays = runCatching { displayManager.displays.toList() }.getOrElse { return ThorDisplayDiagnostics() }
+    val upper = displays.firstOrNull { display ->
+        display.displayId == Display.DEFAULT_DISPLAY && display.isThorUpperDisplay()
+    } ?: displays.firstOrNull { display -> display.isThorUpperDisplay() }
+    val lower = displays.firstOrNull { display -> display.isThorLowerDisplay() }
+    return ThorDisplayDiagnostics(
+        upper = upper?.toThorDisplayPanel() ?: ThorDisplayPanel(),
+        lower = lower?.toThorDisplayPanel() ?: ThorDisplayPanel(),
+    )
+}
+
+private fun Display.isThorUpperDisplay(): Boolean =
+    displayGeometryOrNull()?.let { (width, height, displayRotation) ->
+        DeviceProfile.isThorUpperDisplay(width, height, displayRotation)
+    } == true
+
+private fun Display.isThorLowerDisplay(): Boolean =
+    displayGeometryOrNull()?.let { (width, height, displayRotation) ->
+        DeviceProfile.isThorLowerDisplay(width, height, displayRotation)
+    } == true
+
+private fun Display.toThorDisplayPanel(): ThorDisplayPanel? {
+    val currentMode = modeOrNull() ?: return null
+    val displayRotation = rotationOrNull() ?: return null
+    return ThorDisplayPanel(
+        displayId = displayId,
+        widthPixels = currentMode.physicalWidth,
+        heightPixels = currentMode.physicalHeight,
+        refreshRateHz = currentMode.refreshRate,
+        rotation = displayRotation,
+    )
+}
+
+private fun Display.modeOrNull(): Display.Mode? = runCatching { mode }.getOrNull()
+
+private fun Display.rotationOrNull(): Int? = runCatching { rotation }.getOrNull()
+
+private fun Display.displayGeometryOrNull(): Triple<Int, Int, Int>? {
+    val currentMode = modeOrNull() ?: return null
+    val displayRotation = rotationOrNull() ?: return null
+    return Triple(currentMode.physicalWidth, currentMode.physicalHeight, displayRotation)
+}
+
 class RealSystemBackend(private val context: Context) : SystemBackend {
     override fun snapshot(operation: OperationState): ThorSnapshot {
         val properties = SystemUtils.getDeviceProperties()
@@ -382,54 +427,9 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             stockBackupSlots = PatchUtils.stockBackupSlots(context),
             patchedBackupSlots = PatchUtils.patchedBackupSlots(context),
             operation = operation,
-            displayDiagnostics = readDisplayDiagnostics(),
+            displayDiagnostics = readThorDisplayDiagnostics(context),
             moduleSyncState = moduleSyncState,
         )
-    }
-
-    private fun readDisplayDiagnostics(): ThorDisplayDiagnostics {
-        val displayManager = context.getSystemService(DisplayManager::class.java) ?: return ThorDisplayDiagnostics()
-        val displays = runCatching { displayManager.displays.toList() }.getOrElse { return ThorDisplayDiagnostics() }
-        val upper = displays.firstOrNull { display ->
-            display.displayId == Display.DEFAULT_DISPLAY && display.isThorUpperDisplay()
-        } ?: displays.firstOrNull { display -> display.isThorUpperDisplay() }
-        val lower = displays.firstOrNull { display -> display.isThorLowerDisplay() }
-        return ThorDisplayDiagnostics(
-            upper = upper?.toThorDisplayPanel() ?: ThorDisplayPanel(),
-            lower = lower?.toThorDisplayPanel() ?: ThorDisplayPanel(),
-        )
-    }
-
-    private fun Display.isThorUpperDisplay(): Boolean =
-        displayGeometryOrNull()?.let { (width, height, displayRotation) ->
-            DeviceProfile.isThorUpperDisplay(width, height, displayRotation)
-        } == true
-
-    private fun Display.isThorLowerDisplay(): Boolean =
-        displayGeometryOrNull()?.let { (width, height, displayRotation) ->
-            DeviceProfile.isThorLowerDisplay(width, height, displayRotation)
-        } == true
-
-    private fun Display.toThorDisplayPanel(): ThorDisplayPanel? {
-        val currentMode = modeOrNull() ?: return null
-        val displayRotation = rotationOrNull() ?: return null
-        return ThorDisplayPanel(
-            displayId = displayId,
-            widthPixels = currentMode.physicalWidth,
-            heightPixels = currentMode.physicalHeight,
-            refreshRateHz = currentMode.refreshRate,
-            rotation = displayRotation,
-        )
-    }
-
-    private fun Display.modeOrNull(): Display.Mode? = runCatching { mode }.getOrNull()
-
-    private fun Display.rotationOrNull(): Int? = runCatching { rotation }.getOrNull()
-
-    private fun Display.displayGeometryOrNull(): Triple<Int, Int, Int>? {
-        val currentMode = modeOrNull() ?: return null
-        val displayRotation = rotationOrNull() ?: return null
-        return Triple(currentMode.physicalWidth, currentMode.physicalHeight, displayRotation)
     }
 
     override fun perform(operation: ThorOperation, argument: String?): OperationResult {
