@@ -164,6 +164,18 @@ class ThorOperationGuardTest {
     }
 
     @Test
+    fun allowsPatchAndFlashWithVerifiedDownloadRecoverySources() {
+        val downloadOnly = snapshot(
+            backupAvailable = true,
+            stockRestoreAvailable = true,
+            patchedBackupAvailable = true,
+            stockRecoverySlots = setOf("_a", "_b"),
+        )
+        assertNull(ThorOperationGuard.validate(downloadOnly, ThorOperation.PATCH))
+        assertNull(ThorOperationGuard.validate(downloadOnly, ThorOperation.FLASH))
+    }
+
+    @Test
     fun keepsPatchedCacheCleanupAvailableWithoutRootService() {
         assertNull(
             ThorOperationGuard.validate(
@@ -288,6 +300,7 @@ class ThorOperationGuardTest {
         stateReadHealthy: Boolean = true,
         availableBootSlots: Set<String> = setOf("_a", "_b"),
         stockBackupSlots: Set<String> = if (backupAvailable) availableBootSlots else emptySet(),
+        stockRecoverySlots: Set<String> = emptySet(),
     ): ThorSnapshot {
         return ThorSnapshot(
             profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor", buildFingerprint = "test-build")).copy(
@@ -314,6 +327,7 @@ class ThorOperationGuardTest {
             patchedCacheAvailable = patchedBackupAvailable,
             availableBootSlots = availableBootSlots,
             stockBackupSlots = stockBackupSlots,
+            stockRecoverySlots = stockRecoverySlots,
             operation = OperationState(),
             stateReadHealthy = stateReadHealthy,
         )

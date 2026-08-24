@@ -244,6 +244,14 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
                     "${snapshot.stockBackupSlots.size}/${snapshot.availableBootSlots.size} slots"
                 },
             )
+            DataLine(
+                "Verified recovery sources",
+                if (snapshot.availableBootSlots.isEmpty()) {
+                    "Unavailable"
+                } else {
+                    "${snapshot.stockRecoverySlots.size}/${snapshot.availableBootSlots.size} slots"
+                },
+            )
             DataLine("Stock restore source", if (snapshot.stockRestoreAvailable) "Available" else "Unavailable")
             DataLine(
                 "Patched backups",
@@ -367,6 +375,7 @@ private fun DashboardHashes(context: Context, snapshot: ThorSnapshot) {
     val statuses by produceState<List<RecoveryImageStatus>>(
         emptyList(),
         snapshot.stockBackupSlots,
+        snapshot.stockRecoverySlots,
         snapshot.patchedBackupSlots,
         snapshot.profile.properties.buildIdentity,
         snapshot.operation.status == OperationStatus.RUNNING,

@@ -64,6 +64,18 @@ object PatchUtils {
         )
     }.toSet()
 
+    fun stockRecoverySlots(context: Context): Set<String> = slots.filter { slot ->
+        val partition = preferredPartition(context, slot) ?: return@filter false
+        RecoveryManifestStore.hasVerifiedStockImage(
+            context = context,
+            slot = slot,
+            partition = partition,
+            localPath = stockPath(context, partition, slot),
+            downloadPath = downloadPath(partition, slot),
+            buildIdentity = currentBuildIdentity(),
+        )
+    }.toSet()
+
     fun patchedBackupSlots(context: Context): Set<String> = slots.filter { slot ->
         val partition = preferredPartition(context, slot) ?: return@filter false
         RecoveryManifestStore.hasVerifiedPatchedImage(

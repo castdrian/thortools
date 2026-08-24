@@ -51,6 +51,7 @@ object ThorDiagnosticsReport {
         appendLine("stockRestoreAvailable=${snapshot.stockRestoreAvailable}")
         appendLine("patchedBackupAvailable=${snapshot.patchedBackupAvailable}")
         appendProperty("stockBackupSlots", snapshot.stockBackupSlots.sorted().joinToString(","))
+        appendProperty("stockRecoverySlots", snapshot.stockRecoverySlots.sorted().joinToString(","))
         appendProperty("patchedBackupSlots", snapshot.patchedBackupSlots.sorted().joinToString(","))
         appendProperty("capabilities", snapshot.profile.capabilities.map { it.name }.sorted().joinToString(","))
         appendLine("operation=${snapshot.operation.operation?.name ?: "NONE"}")

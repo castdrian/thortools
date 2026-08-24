@@ -1,6 +1,7 @@
 package dev.adrian.thortools
 
 import android.content.Context
+import dev.adrian.thortools.utils.FileUtils
 import dev.adrian.thortools.utils.RecoveryImageInput
 import dev.adrian.thortools.utils.RecoveryManifestStore
 import java.io.File
@@ -65,6 +66,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         patchedCacheAvailable = false,
         availableBootSlots = setOf("_a", "_b"),
         stockBackupSlots = emptySet(),
+        stockRecoverySlots = emptySet(),
         patchedBackupSlots = emptySet(),
         operation = OperationState(),
         moduleSyncState = AppSettings.getModuleSyncState(preferences),
@@ -88,6 +90,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                     backupAvailable = true,
                     stockRestoreAvailable = true,
                     stockBackupSlots = setOf("_a", "_b"),
+                    stockRecoverySlots = setOf("_a", "_b"),
                 )
             }
             ThorOperation.PATCH -> {
@@ -185,7 +188,13 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         directory.mkdirs()
         prefixes.forEach { prefix ->
             listOf("_a", "_b").forEach { slot ->
-                File(directory, "$prefix$slot.img").writeText("ThorTools debug image $prefix$slot")
+                val file = File(directory, "$prefix$slot.img")
+                file.writeText("ThorTools debug image $prefix$slot")
+                if (!prefix.endsWith("_patched")) {
+                    val downloadFile = File(FileUtils.getPathDownload("/${file.name}"))
+                    downloadFile.parentFile?.mkdirs()
+                    downloadFile.writeText(file.readText())
+                }
             }
         }
         val buildIdentity = state.profile.properties.buildIdentity
@@ -195,7 +204,9 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
             listOf("_a", "_b").map { slot ->
                 val file = File(directory, "$prefix$slot.img")
                 val sourceHash = if (patched) {
-                    RecoveryManifestStore.hashFile(File(directory, "$partition$slot.img").path).orEmpty()
+                    RecoveryManifestStore.hashFile(File(directory, "$partition$slot.img").path)
+                        ?: RecoveryManifestStore.hashFile(File(FileUtils.getPathDownload("/$partition$slot.img")).path)
+                        .orEmpty()
                 } else {
                     ""
                 }
@@ -214,7 +225,8 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
     }
 
     private fun stateWithPersistedImages(): ThorSnapshot {
-        val stockSlots = persistedSlots(patched = false)
+        val stockSlots = persistedStockBackupSlots()
+        val stockRecoverySlots = persistedStockRecoverySlots()
         val patchedSlots = persistedSlots(patched = true)
         return state.copy(
             lcdDensity = AppSettings.getDpi(preferences, 320),
@@ -223,13 +235,44 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
             moduleSyncState = AppSettings.getModuleSyncState(preferences),
             bootOverrideState = AppSettings.getBootOverrideState(preferences),
             displayDiagnostics = readThorDisplayDiagnostics(context),
-            backupAvailable = state.activeSlot in stockSlots,
-            stockRestoreAvailable = state.activeSlot in stockSlots,
+            backupAvailable = state.activeSlot in stockRecoverySlots,
+            stockRestoreAvailable = state.activeSlot in stockRecoverySlots,
             patchedBackupAvailable = state.activeSlot in patchedSlots,
             patchedCacheAvailable = patchedSlots.isNotEmpty(),
             stockBackupSlots = stockSlots,
+            stockRecoverySlots = stockRecoverySlots,
             patchedBackupSlots = patchedSlots,
         )
+    }
+
+    private fun persistedStockRecoverySlots(): Set<String> {
+        val directory = context.getExternalFilesDir(null) ?: return emptySet()
+        val buildIdentity = state.profile.properties.buildIdentity
+        return setOf("_a", "_b").filterTo(mutableSetOf()) { slot ->
+            RecoveryManifestStore.hasVerifiedStockImage(
+                context = context,
+                slot = slot,
+                partition = "init_boot",
+                localPath = File(directory, "init_boot$slot.img").path,
+                downloadPath = FileUtils.getPathDownload("/init_boot$slot.img"),
+                buildIdentity = buildIdentity,
+            )
+        }
+    }
+
+    private fun persistedStockBackupSlots(): Set<String> {
+        val directory = context.getExternalFilesDir(null) ?: return emptySet()
+        val buildIdentity = state.profile.properties.buildIdentity
+        return setOf("_a", "_b").filterTo(mutableSetOf()) { slot ->
+            RecoveryManifestStore.hasVerifiedStockCopies(
+                context = context,
+                slot = slot,
+                partition = "init_boot",
+                localPath = File(directory, "init_boot$slot.img").path,
+                downloadPath = FileUtils.getPathDownload("/init_boot$slot.img"),
+                buildIdentity = buildIdentity,
+            )
+        }
     }
 
     private fun persistedSlots(patched: Boolean): Set<String> {

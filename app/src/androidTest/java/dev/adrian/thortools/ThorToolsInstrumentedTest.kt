@@ -209,6 +209,45 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun debugBackendUsesDownloadStockWhenTheAppCopyIsRemoved() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val directory = context.getExternalFilesDir(null) ?: error("Thor recovery directory is unavailable")
+        val imageNames = listOf(
+            "boot_a.img",
+            "boot_b.img",
+            "init_boot_a.img",
+            "init_boot_b.img",
+            "boot_patched_a.img",
+            "boot_patched_b.img",
+            "init_boot_patched_a.img",
+            "init_boot_patched_b.img",
+        )
+        preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+        imageNames.forEach { name ->
+            File(directory, name).delete()
+            File(FileUtils.getPathDownload("/$name")).delete()
+        }
+        try {
+            val backend = SystemBackendFactory.create(context)
+            assertTrue(backend.perform(ThorOperation.BACKUP).success)
+            File(directory, "init_boot_a.img").delete()
+            val snapshot = backend.snapshot()
+            assertEquals(setOf("_b"), snapshot.stockBackupSlots)
+            assertEquals(setOf("_a", "_b"), snapshot.stockRecoverySlots)
+            assertTrue(snapshot.backupAvailable)
+            assertNull(ThorOperationGuard.validate(snapshot, ThorOperation.PATCH))
+            assertTrue(backend.perform(ThorOperation.PATCH).success)
+        } finally {
+            preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+            imageNames.forEach { name ->
+                File(directory, name).delete()
+                File(FileUtils.getPathDownload("/$name")).delete()
+            }
+        }
+    }
+
+    @Test
     fun debugBackendPersistsRecoveryManifestStatesForTheDashboard() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val preferences = AppSettings.getSharedPrefs(context)
@@ -238,6 +277,16 @@ class ThorToolsInstrumentedTest {
         } finally {
             preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
             directory?.listFiles()?.filter { it.name.contains("_a.img") || it.name.contains("_b.img") }?.forEach(File::delete)
+            listOf(
+                "boot_a.img",
+                "boot_b.img",
+                "init_boot_a.img",
+                "init_boot_b.img",
+                "boot_patched_a.img",
+                "boot_patched_b.img",
+                "init_boot_patched_a.img",
+                "init_boot_patched_b.img",
+            ).forEach { name -> File(FileUtils.getPathDownload("/$name")).delete() }
         }
     }
 

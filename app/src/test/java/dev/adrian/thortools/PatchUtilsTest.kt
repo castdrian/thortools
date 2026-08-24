@@ -39,6 +39,18 @@ class PatchUtilsTest {
     }
 
     @Test
+    fun acceptsVerifiedRecoveryCoverageWhenTheAppCopyIsMissing() {
+        val snapshot = ThorSnapshot.loading(OperationState()).copy(
+            availableBootSlots = setOf("_a", "_b"),
+            stockRecoverySlots = setOf("_a", "_b"),
+        )
+        assertTrue(
+            snapshot.stockRecoveryCoverageReady,
+        )
+        assertFalse(snapshot.stockBackupCoverageReady)
+    }
+
+    @Test
     fun selectPartitionUsesInitBootWhenBothPartitionsExist() {
         assertEquals("init_boot", PatchUtils.selectPartition(initBootAvailable = true, bootAvailable = true))
         assertEquals("init_boot", PatchUtils.selectPartition(initBootAvailable = true, bootAvailable = false))
