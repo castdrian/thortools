@@ -25,7 +25,6 @@ data class MagiskActionResult(
 object MagiskUtil {
     const val MAGISK_DIR = "/data/adb/magisk"
     const val MAGISK_PACKAGE_NAME = "com.topjohnwu.magisk"
-    const val MAGISK_ACTIVITY_MAIN = "com.topjohnwu.magisk/com.topjohnwu.magisk.ui.MainActivity"
     private const val MAGISK_DOWNLOAD_URL = "https://github.com/topjohnwu/Magisk/releases/latest/download/Magisk.apk"
     private const val MAGISK_DOWNLOAD_FILE_NAME = "Magisk-ThorTools.apk"
     private val MAGISK_UTIL_BINARIES = listOf("busybox", "init-ld", "magisk", "magiskboot", "magiskinit", "magiskpolicy")
@@ -191,11 +190,6 @@ object MagiskUtil {
     }
 
     fun hasMagiskPackage(context: Context): Boolean = RootUtils.isPackageInstalled(context, MAGISK_PACKAGE_NAME)
-
-    fun installMagiskModule(context: Context, zipFile: String): Boolean {
-        if (!FileUtils.checkFileExists(zipFile)) return false
-        return RootUtils.runRootCommand(context, "magisk --install-module \"$zipFile\" >/dev/null 2>&1; printf '%s' \$?") == "0"
-    }
 
     fun installLocalMagiskUtils(context: Context): Boolean {
         val destination = File(FileUtils.getPathAppFiles(context, "/magisk"))

@@ -240,6 +240,4 @@ object AppSettings {
         return editor.commit()
     }
 
-    var allowRootScreen = false
-    var needsReboot = false
 }

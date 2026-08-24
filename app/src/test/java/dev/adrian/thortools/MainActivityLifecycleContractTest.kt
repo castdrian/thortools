@@ -15,6 +15,8 @@ class MainActivityLifecycleContractTest {
         assertTrue(mainActivity.contains("<action android:name=\"android.intent.action.MAIN\" />"))
         assertTrue(mainActivity.contains("<category android:name=\"android.intent.category.LAUNCHER\" />"))
         assertFalse(manifest.contains("android:name=\".PermissionActivity\""))
+        assertFalse(File("src/main/res/layout/activity_permission.xml").exists())
+        assertFalse(File("src/main/res/navigation/nav_graph.xml").exists())
     }
 
     @Test

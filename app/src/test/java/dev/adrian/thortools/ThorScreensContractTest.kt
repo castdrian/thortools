@@ -22,4 +22,15 @@ class ThorScreensContractTest {
         assertTrue(rootPanel.contains("DashboardOperations(snapshot)"))
         assertTrue(rootPanel.contains("ThorOperationGuard.validate(snapshot, operation)"))
     }
+
+    @Test
+    fun aboutPanelProvidesActionableSupportLinks() {
+        val source = File("src/main/java/dev/adrian/thortools/screens/ThorScreens.kt").readText()
+        val aboutPanel = source.substringAfter("private fun AboutPanel").substringBefore("private fun openSupportLink")
+
+        assertTrue(aboutPanel.contains("https://github.com/sponsors/castdrian"))
+        assertTrue(aboutPanel.contains("https://ko-fi.com/castdrian"))
+        assertTrue(aboutPanel.contains("openSupportLink(context"))
+        assertTrue(source.contains("Intent(Intent.ACTION_VIEW, Uri.parse(url))"))
+    }
 }

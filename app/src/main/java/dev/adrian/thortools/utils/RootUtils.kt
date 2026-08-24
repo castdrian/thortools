@@ -143,9 +143,6 @@ object RootUtils {
 
     private fun shellQuote(value: String): String = "'${value.replace("'", "'\\''")}'"
 
-    fun checkFileExistsRoot(context: Context, path: String): Boolean =
-        runRootCommand(context, "[ -e ${shellQuote(path)} ] && printf '%s' 1 || printf '%s' 0") == "1"
-
     fun checkFileNonEmptyRoot(context: Context, path: String): Boolean =
         runRootCommand(context, "[ -s ${shellQuote(path)} ] && printf '%s' 1 || printf '%s' 0") == "1"
 
@@ -157,9 +154,6 @@ object RootUtils {
 
     fun reboot(context: Context): Boolean =
         RootExec().executeAsRoot("reboot >/dev/null 2>&1 & printf '%s' 0").getOrNull() == "0"
-
-    fun rootCopy(context: Context, from: String, to: String): Boolean =
-        File(from).exists() && runRootAction(context, "cp -afv ${shellQuote(from)} ${shellQuote(to)}")
 
     fun isPackageInstalled(context: Context, packageName: String): Boolean = try {
         context.packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
@@ -242,8 +236,6 @@ object RootUtils {
             "[ -f ${shellQuote("$MODULE_DIR/thortools/module.prop")} ] && [ -s ${shellQuote("$MODULE_DIR/thortools/module.prop")} ] && [ -f ${shellQuote("$MODULE_DIR/thortools/system.prop")} ] && printf '%s' 1 || printf '%s' 0",
         ) == "1"
 
-    fun startActivityRoot(context: Context, activity: String): Boolean = runRootAction(context, "am start -n $activity")
-
     fun readAnimationSpeed(context: Context): Float? {
         val values = animationSettingKeys.map { key ->
             parseAnimationSpeedOutput(runRootCommand(context, "settings get global $key") ?: return null)
@@ -266,8 +258,6 @@ object RootUtils {
 
     fun setDpi(context: Context, dpi: Int): Boolean =
         dpi > 0 && runRootAction(context, "wm density $dpi") && readDpi(context) == dpi
-
-    fun resetDpi(context: Context): Boolean = runRootAction(context, "resetprop -p ro.sf.lcd_density")
 
     internal fun parseAnimationSpeedOutput(output: String): Float? = output
         .trim()

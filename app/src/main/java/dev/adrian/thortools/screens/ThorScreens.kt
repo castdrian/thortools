@@ -3,6 +3,8 @@ package dev.adrian.thortools.screens
 import android.content.Context
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,7 +36,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -372,15 +373,15 @@ private fun DashboardRecoveryGuidance(snapshot: ThorSnapshot) {
 
 @Composable
 private fun DashboardHashes(context: Context, snapshot: ThorSnapshot) {
-    val statuses by produceState<List<RecoveryImageStatus>>(
-        emptyList(),
+    var statuses by remember { mutableStateOf<List<RecoveryImageStatus>>(emptyList()) }
+    LaunchedEffect(
         snapshot.stockBackupSlots,
         snapshot.stockRecoverySlots,
         snapshot.patchedBackupSlots,
         snapshot.profile.properties.buildIdentity,
         snapshot.operation.status == OperationStatus.RUNNING,
     ) {
-        value = withContext(Dispatchers.IO) {
+        statuses = withContext(Dispatchers.IO) {
             RecoveryManifestStore.statuses(context, snapshot.profile.properties.buildIdentity)
         }
     }
@@ -644,7 +645,20 @@ private fun AboutPanel(context: Context, snapshot: ThorSnapshot) {
         Text("Thor-first root and system tweaks for the AYN Thor dual-screen handheld.")
         Text("Open source under the GPLv2 license.")
         Text("Forked from FeralAI/o2ptweaks.app with upstream history preserved.")
-        Text("Support the project at github.com/sponsors/castdrian or ko-fi.com/castdrian.")
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { openSupportLink(context, "https://github.com/sponsors/castdrian") },
+                modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+            ) {
+                Text("GitHub Sponsors")
+            }
+            OutlinedButton(
+                onClick = { openSupportLink(context, "https://ko-fi.com/castdrian") },
+                modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+            ) {
+                Text("Ko-fi")
+            }
+        }
         OutlinedButton(
             onClick = {
                 val report = ThorDiagnosticsReport.build(
@@ -661,6 +675,16 @@ private fun AboutPanel(context: Context, snapshot: ThorSnapshot) {
         ) {
             Text("Copy diagnostics")
         }
+    }
+}
+
+private fun openSupportLink(context: Context, url: String) {
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }.onFailure {
+        Toast.makeText(context, "No browser is available", Toast.LENGTH_SHORT).show()
     }
 }
 
