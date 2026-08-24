@@ -23,6 +23,10 @@ BOOT_IMG="$WORKING_PATH/boot$ACTIVE_SLOT.img"
 PATCHED_BOOT="$WORKING_PATH/boot_patched$ACTIVE_SLOT.img"
 TEMP_PATCHED_BOOT="$PATCHED_BOOT.tmp"
 
+if [ ! -s "$BOOT_IMG" ] || ! verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256"; then
+    BOOT_IMG="$DOWNLOAD_PATH/boot$ACTIVE_SLOT.img"
+fi
+
 if ! verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256"; then
     echo "Stock boot image changed before patch" >> "$LOG_FILE"
     exit 1

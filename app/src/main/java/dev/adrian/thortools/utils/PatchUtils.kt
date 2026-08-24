@@ -187,6 +187,7 @@ object PatchUtils {
             partition = partition,
             localPath = source,
             buildIdentity = buildIdentity,
+            downloadPath = downloadPath(partition, slot),
         ) ?: return ""
         val output = patchedPath(context, partition, slot)
         if (patchPartition(context, partition, output, magiskPath, slot, sourceHash, buildIdentity) &&
