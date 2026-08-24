@@ -18,7 +18,7 @@ EXPECTED_SHA256="$3"
 EXPECTED_BUILD_IDENTITY="$4"
 BOOT_DEVICE="$(resolve_partition "boot$ACTIVE_SLOT")"
 BOOT_IMG="${1:-$WORKING_PATH/boot$ACTIVE_SLOT.img}"
-if [ ! -s "$BOOT_IMG" ]; then
+if [ ! -s "$BOOT_IMG" ] || ! verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256"; then
     BOOT_IMG="$DOWNLOAD_PATH/boot$ACTIVE_SLOT.img"
 fi
 

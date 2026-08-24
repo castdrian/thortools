@@ -57,6 +57,19 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun restoreScriptsFallbackWhenTheExplicitStockCopyChanges() {
+        listOf(
+            "boot.restore.sh" to "BOOT_IMG=\"\$DOWNLOAD_PATH/boot\$ACTIVE_SLOT.img\"",
+            "init_boot.restore.sh" to "BOOT_IMG=\"\$DOWNLOAD_PATH/init_boot\$ACTIVE_SLOT.img\"",
+        ).forEach { (name, fallback) ->
+            val source = script(name)
+            assertTrue(source.contains("DOWNLOAD_PATH=\"/storage/emulated/0/Download\""))
+            assertTrue(source.contains("if [ ! -s \"\$BOOT_IMG\" ] || ! verify_image_hash \"\$BOOT_IMG\" \"\$EXPECTED_SHA256\"; then"))
+            assertTrue(source.contains(fallback))
+        }
+    }
+
+    @Test
     fun patchScriptsRejectAMagiskFailureEvenIfOutputRemains() {
         listOf("boot.patch.sh", "init_boot.patch.sh").forEach { name ->
             val source = script(name)

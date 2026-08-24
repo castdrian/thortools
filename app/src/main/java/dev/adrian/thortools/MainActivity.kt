@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             session.load()
             sessionLoaded = true
+            if (activityResumed) requestSecondaryDisplay()
         }
         setContent {
             ThorToolsTheme {
@@ -143,7 +144,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showSecondaryDisplay() {
-        if (!secondaryPresentationRequested || !activityResumed || isFinishing) return
+        if (!secondaryPresentationRequested || !activityResumed || !sessionLoaded || isFinishing) return
         updatePrimaryDisplayRole()
         val display = findThorSecondaryDisplay()
         if (display == null) {
