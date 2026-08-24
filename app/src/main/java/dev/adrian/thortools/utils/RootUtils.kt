@@ -147,7 +147,7 @@ object RootUtils {
     }
 
     fun hasPartition(context: Context, partitionName: String, slot: String): Boolean =
-        hasPServer() && findPartition(context, partitionName, slot) != null
+        isPServerResponsive() && findPartition(context, partitionName, slot) != null
 
     fun installThorToolsMagiskModule(context: Context): Boolean {
         val modulePath = "$MODULE_DIR/thortools"

@@ -1,5 +1,6 @@
 package dev.adrian.thortools
 
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -148,6 +149,8 @@ class RecoveryScriptContractTest {
         assertTrue(backend.contains("val rootService = RootUtils.isPServerResponsive()"))
         assertTrue(receiver.contains("RootUtils.isPServerResponsive()"))
         assertTrue(patchUtils.contains("if (!RootUtils.isPServerResponsive()"))
+        assertTrue(rootUtils.contains("fun hasPartition(context: Context, partitionName: String, slot: String): Boolean =\n        isPServerResponsive()"))
+        assertFalse(rootUtils.contains("fun hasPartition(context: Context, partitionName: String, slot: String): Boolean =\n        hasPServer()"))
     }
 
     @Test
