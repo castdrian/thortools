@@ -129,6 +129,26 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun recoveryScriptsRejectBuildChangesAroundEveryImageOperation() {
+        val partitionSource = script("partition_path.sh")
+        assertTrue(partitionSource.contains("current_build_identity()"))
+        assertTrue(partitionSource.contains("require_build_identity()"))
+        listOf(
+            "boot.backup.sh",
+            "init_boot.backup.sh",
+            "boot.patch.sh",
+            "init_boot.patch.sh",
+            "boot.flash.sh",
+            "init_boot.flash.sh",
+            "boot.restore.sh",
+            "init_boot.restore.sh",
+        ).forEach { name ->
+            val source = script(name)
+            assertTrue(source.contains("require_build_identity"))
+        }
+    }
+
+    @Test
     fun rootScriptRunnerSharesTheAdvertisedLatestLogPath() {
         val source = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
         assertTrue(source.contains("THORTOOLS_LOG_PATH="))
@@ -165,7 +185,7 @@ class RecoveryScriptContractTest {
     fun backupCombinesInitBootAndBootResultsInOneLog() {
         val source = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
         assertTrue(source.contains("var clearLog = true"))
-        assertTrue(source.contains("runRootScript(context, script, clearLog = clearLog)"))
+        assertTrue(source.contains("arguments = listOf(slot, buildIdentity)"))
         assertTrue(source.contains("clearLog = false"))
     }
 
@@ -234,9 +254,9 @@ class RecoveryScriptContractTest {
         assertTrue(patchUtilsSource.contains("fun flashBoot(context: Context, expectedSlot: String)"))
         assertTrue(patchUtilsSource.contains("fun restoreBoot(context: Context, expectedSlot: String)"))
         assertTrue(patchUtilsSource.contains("stableSlot(expectedSlot)"))
-        assertTrue(patchUtilsSource.contains("\"\$partition.flash.sh\", listOf(slot, patchedHash)"))
-        assertTrue(patchUtilsSource.contains("\"\$partition.patch.sh\", listOf(magiskPath, slot, sourceHash)"))
-        assertTrue(patchUtilsSource.contains("\"\$partition.restore.sh\", listOf(source.path, slot, source.sha256)"))
+        assertTrue(patchUtilsSource.contains("\"\$partition.flash.sh\", listOf(slot, patchedHash, buildIdentity)"))
+        assertTrue(patchUtilsSource.contains("\"\$partition.patch.sh\", listOf(magiskPath, slot, sourceHash, buildIdentity)"))
+        assertTrue(patchUtilsSource.contains("\"\$partition.restore.sh\", listOf(source.path, slot, source.sha256, buildIdentity)"))
     }
 
     private fun script(name: String): String =

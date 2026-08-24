@@ -10,11 +10,12 @@ LOG_FILE="${THORTOOLS_LOG_PATH:-$WORKING_PATH/init_boot.restore.log}"
 
 echo "Restore init_boot.img starting..." >> "$LOG_FILE"
 
-if ! require_active_slot "$2"; then
+if ! require_active_slot "$2" || ! require_build_identity "$4"; then
     echo "Active slot changed before init_boot restore" >> "$LOG_FILE"
     exit 2
 fi
 EXPECTED_SHA256="$3"
+EXPECTED_BUILD_IDENTITY="$4"
 BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"
 BOOT_IMG="${1:-$WORKING_PATH/init_boot$ACTIVE_SLOT.img}"
 if [ ! -s "$BOOT_IMG" ]; then
@@ -22,14 +23,14 @@ if [ ! -s "$BOOT_IMG" ]; then
 fi
 
 if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE"; then
-    if ! require_active_slot "$2"; then
+    if ! require_active_slot "$2" || ! require_build_identity "$EXPECTED_BUILD_IDENTITY"; then
         echo "Active slot changed before init_boot restore write" >> "$LOG_FILE"
         exit 2
     fi
     BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"
     echo "Restoring $BOOT_IMG..." >> $LOG_FILE
-    if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE" && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
-        if ! require_active_slot "$2"; then
+    if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE" && require_build_identity "$EXPECTED_BUILD_IDENTITY" && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
+        if ! require_active_slot "$2" || ! require_build_identity "$EXPECTED_BUILD_IDENTITY"; then
             echo "Active slot changed after init_boot restore write" >> "$LOG_FILE"
             exit 2
         fi

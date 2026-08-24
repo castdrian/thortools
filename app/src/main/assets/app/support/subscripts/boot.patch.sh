@@ -15,7 +15,7 @@ MAGISK_PATH="$1"
 MAGISK_PATCH="$MAGISK_PATH/boot_patch.sh"
 MAGISK_NEWBOOT="$MAGISK_PATH/new-boot.img"
 EXPECTED_SHA256="$3"
-if ! require_active_slot "$2"; then
+if ! require_active_slot "$2" || ! require_build_identity "$4"; then
     echo "Active slot changed before boot patch" >> "$LOG_FILE"
     exit 2
 fi
@@ -28,6 +28,11 @@ if ! verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256"; then
     exit 1
 fi
 
+if ! require_build_identity "$4"; then
+    echo "Thor build changed before boot patch" >> "$LOG_FILE"
+    exit 2
+fi
+
 echo "Cleaning temp files"
 rm -f "$MAGISK_NEWBOOT" >> $LOG_FILE
 
@@ -36,6 +41,12 @@ if ! KEEPVERITY=true KEEPFORCEENCRYPT=true sh "$MAGISK_PATCH" "$BOOT_IMG" >> "$L
     echo "Magisk patch command failed" >> "$LOG_FILE"
     rm -f "$MAGISK_NEWBOOT"
     exit 1
+fi
+
+if ! require_active_slot "$2" || ! require_build_identity "$4"; then
+    echo "Thor context changed during boot patch" >> "$LOG_FILE"
+    rm -f "$MAGISK_NEWBOOT"
+    exit 2
 fi
 
 if ! verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256"; then

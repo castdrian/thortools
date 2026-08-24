@@ -297,6 +297,9 @@ object ThorOperationGuard {
         if (operation in imageOperations && snapshot.activeSlot !in setOf("_a", "_b")) {
             return "The active Thor slot could not be determined"
         }
+        if (operation in imageOperations && snapshot.profile.properties.buildIdentity.isBlank()) {
+            return "The Thor build identity is unavailable"
+        }
         if (operation in imageOperations && !snapshot.initBootAvailable && !snapshot.bootAvailable) {
             return "No supported Thor boot partition was found"
         }

@@ -93,6 +93,19 @@ class ThorOperationGuardTest {
     }
 
     @Test
+    fun rejectsImageOperationsWithoutBuildIdentity() {
+        val snapshot = snapshot().copy(
+            profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor")).copy(
+                capabilities = setOf(ThorCapability.BATTERY_STATE),
+            ),
+        )
+        assertEquals(
+            "The Thor build identity is unavailable",
+            ThorOperationGuard.validate(snapshot, ThorOperation.BACKUP),
+        )
+    }
+
+    @Test
     fun protectsStockBackupAndPatchPrerequisites() {
         assertEquals(
             "Capture stock backups before root is active",
@@ -263,7 +276,7 @@ class ThorOperationGuardTest {
         stockBackupSlots: Set<String> = if (backupAvailable) availableBootSlots else emptySet(),
     ): ThorSnapshot {
         return ThorSnapshot(
-            profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor")).copy(
+            profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor", buildFingerprint = "test-build")).copy(
                 capabilities = if (batteryAvailable) setOf(ThorCapability.BATTERY_STATE) else emptySet(),
             ),
             batteryPercent = batteryPercent,

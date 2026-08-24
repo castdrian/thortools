@@ -14,6 +14,11 @@ copied=0
 expected=0
 failed=0
 
+if ! require_active_slot "$1" || ! require_build_identity "$2"; then
+    echo "ThorTools init_boot backup context changed before reading partitions" >> "$LOG_FILE"
+    exit 2
+fi
+
 for ACTIVE_SLOT in _a _b; do
     BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"
     [ -n "$BOOT_DEVICE" ] || continue
@@ -37,6 +42,11 @@ for ACTIVE_SLOT in _a _b; do
         rm -f "$TEMP_FILE"
     fi
 done
+
+if ! require_active_slot "$1" || ! require_build_identity "$2"; then
+    echo "ThorTools init_boot backup context changed after reading partitions" >> "$LOG_FILE"
+    exit 2
+fi
 
 if [ "$expected" -gt 0 ] && [ "$copied" -eq "$expected" ] && [ "$failed" -eq 0 ]; then
     echo "ThorTools init_boot backup complete" >> "$LOG_FILE"

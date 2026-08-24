@@ -9,23 +9,24 @@ LOG_FILE="${THORTOOLS_LOG_PATH:-$WORKING_PATH/init_boot.flash.log}"
 
 echo "Flash rooted init_boot.img starting..." >> "$LOG_FILE"
 
-if ! require_active_slot "$1"; then
+if ! require_active_slot "$1" || ! require_build_identity "$3"; then
     echo "Active slot changed before init_boot flash" >> "$LOG_FILE"
     exit 2
 fi
 EXPECTED_SHA256="$2"
+EXPECTED_BUILD_IDENTITY="$3"
 BOOT_IMG="$WORKING_PATH/init_boot_patched$ACTIVE_SLOT.img"
 # BOOT_DEVICE=$(ls -la /dev/block/bootdevice/by-name | grep " init_boot$ACTIVE_SLOT " | sed -En 's/^.*(\/dev\/block\/.*)$/\1/p')
 BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"
 
 if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE"; then
-    if ! require_active_slot "$1"; then
+    if ! require_active_slot "$1" || ! require_build_identity "$EXPECTED_BUILD_IDENTITY"; then
         echo "Active slot changed before init_boot write" >> "$LOG_FILE"
         exit 2
     fi
     BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"
-    if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE" && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
-        if ! require_active_slot "$1"; then
+    if [ -n "$BOOT_DEVICE" ] && verify_image_hash "$BOOT_IMG" "$EXPECTED_SHA256" && image_fits_partition "$BOOT_IMG" "$BOOT_DEVICE" && require_build_identity "$EXPECTED_BUILD_IDENTITY" && dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
+        if ! require_active_slot "$1" || ! require_build_identity "$EXPECTED_BUILD_IDENTITY"; then
             echo "Active slot changed after init_boot write" >> "$LOG_FILE"
             exit 2
         fi

@@ -20,6 +20,43 @@ normalize_slot() {
     esac
 }
 
+current_build_identity() {
+    BUILD_FINGERPRINT="$(getprop ro.build.fingerprint)"
+    [ -n "$BUILD_FINGERPRINT" ] || BUILD_FINGERPRINT="$(getprop ro.vendor.build.fingerprint)"
+    [ -n "$BUILD_FINGERPRINT" ] || BUILD_FINGERPRINT="$(getprop ro.odm.build.fingerprint)"
+    if [ -n "$BUILD_FINGERPRINT" ]; then
+        printf '%s' "$BUILD_FINGERPRINT"
+        return 0
+    fi
+    BUILD_ID="$(getprop ro.build.id)"
+    [ -n "$BUILD_ID" ] || BUILD_ID="$(getprop ro.vendor.build.id)"
+    BUILD_DISPLAY_ID="$(getprop ro.build.display.id)"
+    [ -n "$BUILD_DISPLAY_ID" ] || BUILD_DISPLAY_ID="$(getprop ro.vendor.build.display.id)"
+    BUILD_FIRMWARE="$(getprop ro.fota.version)"
+    [ -n "$BUILD_FIRMWARE" ] || BUILD_FIRMWARE="$(getprop ro.build.version.incremental)"
+    [ -n "$BUILD_FIRMWARE" ] || BUILD_FIRMWARE="$(getprop ro.build.version.release)"
+    BUILD_DATE="$(getprop ro.build.date)"
+    [ -n "$BUILD_DATE" ] || BUILD_DATE="$(getprop ro.vendor.build.date)"
+    BUILD_IDENTITY=""
+    for BUILD_VALUE in "$BUILD_ID" "$BUILD_DISPLAY_ID" "$BUILD_FIRMWARE" "$BUILD_DATE"; do
+        if [ -n "$BUILD_VALUE" ]; then
+            if [ -n "$BUILD_IDENTITY" ]; then
+                BUILD_IDENTITY="$BUILD_IDENTITY|$BUILD_VALUE"
+            else
+                BUILD_IDENTITY="$BUILD_VALUE"
+            fi
+        fi
+    done
+    printf '%s' "$BUILD_IDENTITY"
+}
+
+require_build_identity() {
+    EXPECTED_BUILD_IDENTITY="$1"
+    [ -n "$EXPECTED_BUILD_IDENTITY" ] || return 1
+    CURRENT_BUILD_IDENTITY="$(current_build_identity)"
+    [ -n "$CURRENT_BUILD_IDENTITY" ] && [ "$CURRENT_BUILD_IDENTITY" = "$EXPECTED_BUILD_IDENTITY" ]
+}
+
 require_active_slot() {
     EXPECTED_SLOT="$(normalize_slot "$1")" || return 1
     ACTIVE_PROPERTY="$(getprop ro.boot.slot_suffix)"
