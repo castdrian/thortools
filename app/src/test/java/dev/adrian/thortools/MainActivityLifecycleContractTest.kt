@@ -42,6 +42,7 @@ class MainActivityLifecycleContractTest {
         assertTrue(show.contains("if (display == null)"))
         assertTrue(show.contains("scheduleSecondaryDisplayRetry()"))
         assertTrue(show.contains("it.thorDisplayRole()"))
+        assertTrue(show.contains("existing.matches(display, role)"))
         assertTrue(source.contains("private fun Display.thorDisplayRole(): ThorDisplayRole"))
         assertTrue(source.contains("private fun Display.modeOrNull(): Display.Mode?"))
         assertTrue(source.contains("private fun Display.rotationOrNull(): Int?"))
@@ -91,6 +92,8 @@ class MainActivityLifecycleContractTest {
         assertTrue(presentation.contains("ThorToolsTheme(lowerDisplay = role == ThorDisplayRole.LOWER)"))
         assertTrue(presentation.contains("ThorDashboardScreen(session, context)"))
         assertTrue(presentation.contains("fun requestInputFocus()"))
+        assertTrue(presentation.contains("fun matches(display: Display, expectedRole: ThorDisplayRole)"))
+        assertTrue(presentation.contains("shouldReuseThorPresentation("))
         assertTrue(presentation.contains("if (!isShowing) return@post"))
         assertTrue(source.contains("window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)"))
     }

@@ -162,7 +162,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         secondaryPresentation?.let { existing ->
-            if (existing.display.displayId == display.displayId && existing.role == role && existing.isShowing) {
+            if (existing.matches(display, role)) {
                 existing.requestInputFocus()
                 return
             }
@@ -283,7 +283,30 @@ private class ThorPresentation(
     private val session: ThorSession,
     val role: ThorDisplayRole,
 ) : Presentation(activity, display) {
+    private val renderedGeometry = ThorDisplayGeometry(
+        displayId = display.displayId,
+        widthPixels = display.modeOrNull()?.physicalWidth ?: -1,
+        heightPixels = display.modeOrNull()?.physicalHeight ?: -1,
+        rotation = display.rotationOrNull() ?: -1,
+    )
     private var contentView: ComposeView? = null
+
+    fun matches(display: Display, expectedRole: ThorDisplayRole): Boolean {
+        val currentMode = display.modeOrNull() ?: return false
+        val currentRotation = display.rotationOrNull() ?: return false
+        return shouldReuseThorPresentation(
+            isShowing = isShowing,
+            renderedRole = role,
+            expectedRole = expectedRole,
+            renderedGeometry = renderedGeometry,
+            currentGeometry = ThorDisplayGeometry(
+                displayId = display.displayId,
+                widthPixels = currentMode.physicalWidth,
+                heightPixels = currentMode.physicalHeight,
+                rotation = currentRotation,
+            ),
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

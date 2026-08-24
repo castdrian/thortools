@@ -22,6 +22,21 @@ enum class ThorDisplayRole {
     }
 }
 
+internal data class ThorDisplayGeometry(
+    val displayId: Int,
+    val widthPixels: Int,
+    val heightPixels: Int,
+    val rotation: Int,
+)
+
+internal fun shouldReuseThorPresentation(
+    isShowing: Boolean,
+    renderedRole: ThorDisplayRole,
+    expectedRole: ThorDisplayRole,
+    renderedGeometry: ThorDisplayGeometry,
+    currentGeometry: ThorDisplayGeometry,
+): Boolean = isShowing && renderedRole == expectedRole && renderedGeometry == currentGeometry
+
 internal fun resolvePrimaryDisplayRole(
     observedRole: ThorDisplayRole,
     isDefaultDisplay: Boolean,

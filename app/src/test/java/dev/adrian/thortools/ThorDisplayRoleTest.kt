@@ -1,6 +1,8 @@
 package dev.adrian.thortools
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ThorDisplayRoleTest {
@@ -61,6 +63,47 @@ class ThorDisplayRoleTest {
                 isDefaultDisplay = false,
                 hasUpperDisplay = true,
                 hasLowerDisplay = true,
+            ),
+        )
+    }
+
+    @Test
+    fun reusesAVisiblePresentationOnlyWhenRoleAndGeometryRemainStable() {
+        val rendered = ThorDisplayGeometry(1, 1240, 1080, 0)
+        assertTrue(
+            shouldReuseThorPresentation(
+                isShowing = true,
+                renderedRole = ThorDisplayRole.LOWER,
+                expectedRole = ThorDisplayRole.LOWER,
+                renderedGeometry = rendered,
+                currentGeometry = rendered,
+            ),
+        )
+        assertFalse(
+            shouldReuseThorPresentation(
+                isShowing = true,
+                renderedRole = ThorDisplayRole.LOWER,
+                expectedRole = ThorDisplayRole.LOWER,
+                renderedGeometry = rendered,
+                currentGeometry = rendered.copy(widthPixels = 1080, heightPixels = 1240, rotation = 1),
+            ),
+        )
+        assertFalse(
+            shouldReuseThorPresentation(
+                isShowing = true,
+                renderedRole = ThorDisplayRole.LOWER,
+                expectedRole = ThorDisplayRole.UPPER,
+                renderedGeometry = rendered,
+                currentGeometry = rendered,
+            ),
+        )
+        assertFalse(
+            shouldReuseThorPresentation(
+                isShowing = false,
+                renderedRole = ThorDisplayRole.LOWER,
+                expectedRole = ThorDisplayRole.LOWER,
+                renderedGeometry = rendered,
+                currentGeometry = rendered,
             ),
         )
     }
