@@ -155,6 +155,23 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun partitionWriteScriptsRequireAnUnlockedBootloaderBeforeWriting() {
+        val partitionSource = script("partition_path.sh")
+        assertTrue(partitionSource.contains("require_bootloader_unlocked()"))
+        assertTrue(partitionSource.contains("ro.boot.flash.locked"))
+        assertTrue(partitionSource.contains("ro.boot.vbmeta.device_state"))
+        assertTrue(partitionSource.contains("ro.boot.verifiedbootstate"))
+        listOf("boot.flash.sh", "init_boot.flash.sh", "boot.restore.sh", "init_boot.restore.sh").forEach { name ->
+            val source = script(name)
+            val writeIndex = source.indexOf("dd if=")
+            assertTrue(source.contains("require_bootloader_unlocked"))
+            assertTrue(writeIndex >= 0)
+            assertTrue(source.lastIndexOf("require_bootloader_unlocked", writeIndex) >= 0)
+            assertTrue(source.contains("Bootloader locked before"))
+        }
+    }
+
+    @Test
     fun recoveryScriptsRejectBuildChangesAroundEveryImageOperation() {
         val partitionSource = script("partition_path.sh")
         assertTrue(partitionSource.contains("current_build_identity()"))

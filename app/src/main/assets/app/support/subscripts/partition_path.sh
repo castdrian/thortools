@@ -65,6 +65,29 @@ require_active_slot() {
     [ "$ACTIVE_SLOT" = "$EXPECTED_SLOT" ]
 }
 
+require_bootloader_unlocked() {
+    BOOTLOADER_FLASH_LOCKED="$(getprop ro.boot.flash.locked)"
+    BOOTLOADER_DEVICE_STATE="$(getprop ro.boot.vbmeta.device_state)"
+    BOOTLOADER_VERIFIED_STATE="$(getprop ro.boot.verifiedbootstate)"
+    BOOTLOADER_UNLOCKED_COUNT=0
+    BOOTLOADER_LOCKED_COUNT=0
+    for BOOTLOADER_VALUE in "$BOOTLOADER_FLASH_LOCKED" "$BOOTLOADER_DEVICE_STATE" "$BOOTLOADER_VERIFIED_STATE"; do
+        [ -n "$BOOTLOADER_VALUE" ] || continue
+        case "$(printf '%s' "$BOOTLOADER_VALUE" | tr '[:upper:]' '[:lower:]')" in
+            0|false|no|unlocked|orange)
+                BOOTLOADER_UNLOCKED_COUNT=$((BOOTLOADER_UNLOCKED_COUNT + 1))
+                ;;
+            1|true|yes|locked|green|yellow|red)
+                BOOTLOADER_LOCKED_COUNT=$((BOOTLOADER_LOCKED_COUNT + 1))
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    done
+    [ "$BOOTLOADER_UNLOCKED_COUNT" -gt 0 ] && [ "$BOOTLOADER_LOCKED_COUNT" -eq 0 ]
+}
+
 verify_image_hash() {
     IMAGE_PATH="$1"
     EXPECTED_HASH="$2"
