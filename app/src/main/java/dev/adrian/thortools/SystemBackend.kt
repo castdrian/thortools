@@ -841,9 +841,7 @@ class ThorSession(
                 }
                 snapshot = runCatching {
                     withContext(Dispatchers.IO) { backend.snapshot(reported) }
-                }.getOrElse {
-                    snapshot.copy(operation = reported)
-                }
+                }.getOrElse { failedSnapshot(reported) }
             } finally {
                 if (operationJob === coroutineContext[Job]) operationJob = null
             }

@@ -22,6 +22,7 @@ import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -544,6 +545,64 @@ class ThorToolsInstrumentedTest {
             )
             assertEquals(OperationStatus.FAILURE, session.snapshot.operation.status)
         } finally {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+        }
+    }
+
+    @Test
+    fun failsClosedWhenThePostOperationStateReadCannotComplete() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val baseline = SystemBackendFactory.create(context).snapshot()
+        val failAfterPerform = AtomicBoolean(false)
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot {
+                if (failAfterPerform.get() && operation.status != OperationStatus.RUNNING) {
+                    error("post-operation state read failed")
+                }
+                return baseline.copy(operation = operation)
+            }
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult {
+                failAfterPerform.set(true)
+                return OperationResult(true, "setting updated")
+            }
+        }
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        try {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+            val session = ThorSession(context, backend)
+            session.load()
+            session.run(scope, ThorOperation.SET_DPI, "320")
+            withTimeout(5_000L) {
+                while (session.snapshot.operation.status != OperationStatus.FAILURE) delay(10L)
+            }
+            assertFalse(session.snapshot.stateReadHealthy)
+            assertTrue(session.snapshot.profile.capabilities.isEmpty())
+            assertEquals(
+                "Thor system state is unavailable; refresh before changing the Thor",
+                ThorOperationGuard.validate(session.snapshot, ThorOperation.SET_DPI),
+            )
+        } finally {
+            scope.cancel()
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)
