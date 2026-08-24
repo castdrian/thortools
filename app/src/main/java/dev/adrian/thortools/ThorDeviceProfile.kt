@@ -95,7 +95,7 @@ object DeviceProfile {
             properties.soc,
             properties.platform,
         ).joinToString(" ").normalized()
-        val isThor = searchable.containsThorIdentifier() || isAynThorBoard(properties)
+        val isThor = searchable.containsThorIdentifier() || isAynThorCodename(properties)
         return ThorDeviceProfile(properties, isThor, variantFor(properties))
     }
 
@@ -141,12 +141,21 @@ object DeviceProfile {
         return litePlatformPattern.containsMatchIn(platform)
     }
 
-    private fun isAynThorBoard(properties: DeviceProperties): Boolean {
+    private fun isAynThorCodename(properties: DeviceProperties): Boolean {
         val hasAynIdentity = listOf(properties.manufacturer, properties.brand)
             .map { it.normalized() }
             .any { value -> value.split(' ').any { token -> token == "ayn" } }
-        val hasKalamaBoard = properties.board.normalized() == "kalama"
-        return hasAynIdentity && hasKalamaBoard
+        val hasThorCodename = listOf(
+            properties.device,
+            properties.product,
+            properties.systemDevice,
+            properties.systemName,
+            properties.buildProduct,
+        ).map { it.normalized() }
+            .any { value -> value in thorCodenameIdentifiers }
+        val board = properties.board.normalized()
+        val hasCompatibleBoard = board.isBlank() || board in thorBoardIdentifiers
+        return hasAynIdentity && hasThorCodename && hasCompatibleBoard
     }
 
     private fun String.normalized(): String = identifierSeparatorPattern.replace(lowercase(), " ").trim()
@@ -155,6 +164,8 @@ object DeviceProfile {
         thorPattern.containsMatchIn(this) || split(' ').any(compactThorPattern::matches)
 
     private val litePlatformPattern = Regex("(^|\\s)(sm8250|kona)(\\s|$)")
+    private val thorCodenameIdentifiers = setOf("kalama", "odin2thor")
+    private val thorBoardIdentifiers = setOf("kalama", "sm8550", "qcs8550")
 
     fun isThorLowerDisplay(
         widthPixels: Int,
