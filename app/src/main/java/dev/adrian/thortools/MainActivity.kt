@@ -166,7 +166,8 @@ class MainActivity : ComponentActivity() {
                 existing.requestInputFocus()
                 return
             }
-            existing.dismiss()
+            runCatching { existing.dismiss() }
+            if (secondaryPresentation === existing) secondaryPresentation = null
         }
         secondaryDisplayShown = false
         val presentation = ThorPresentation(this, display, session, role)
@@ -259,9 +260,10 @@ class MainActivity : ComponentActivity() {
             secondaryDisplayRetry = null
             secondaryDisplayRetryCount = 0
         }
-        secondaryPresentation?.dismiss()
+        val presentation = secondaryPresentation
         secondaryPresentation = null
         secondaryDisplayShown = false
+        runCatching { presentation?.dismiss() }
     }
 }
 

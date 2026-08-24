@@ -50,6 +50,7 @@ class MainActivityLifecycleContractTest {
         assertTrue(show.contains("catch (_: WindowManager.BadTokenException)"))
         assertTrue(show.contains("catch (_: WindowManager.InvalidDisplayException)"))
         assertTrue(show.contains("runCatching { presentation.dismiss() }"))
+        assertTrue(show.contains("runCatching { existing.dismiss() }"))
         assertTrue(show.contains("secondaryDisplayShown = false"))
         assertTrue(show.contains("secondaryDisplayShown = secondaryPresentation === presentation && presentation.isShowing"))
         assertTrue(show.contains("existing.requestInputFocus()"))
@@ -57,6 +58,9 @@ class MainActivityLifecycleContractTest {
         assertTrue(show.contains("postDelayed({ presentation.requestInputFocus() }, 250L)"))
         assertTrue(retry.contains("!secondaryPresentationRequested"))
         assertTrue(stop.contains("dismissSecondaryDisplay(clearRequest = true)"))
+        val dismiss = source.substringAfter("private fun dismissSecondaryDisplay").substringBefore("private class ThorPresentation")
+        assertTrue(dismiss.contains("val presentation = secondaryPresentation"))
+        assertTrue(dismiss.contains("runCatching { presentation?.dismiss() }"))
     }
 
     @Test

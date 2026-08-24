@@ -23,6 +23,8 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -643,6 +645,96 @@ class ThorToolsInstrumentedTest {
             assertFalse(preferences.contains(AppSettings.JOURNAL_MESSAGE_KEY))
             assertFalse(preferences.contains(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY))
         } finally {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+        }
+    }
+
+    @Test
+    fun serializesOperationStartsAcrossDualDisplaySessions() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val backendStarted = CountDownLatch(1)
+        val releaseBackend = CountDownLatch(1)
+        val operationCount = AtomicInteger(0)
+        preferences.edit()
+            .remove(AppSettings.JOURNAL_OPERATION_KEY)
+            .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+            .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+            .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+            .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+            .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+            .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+            .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+            .commit()
+        val baseline = SystemBackendFactory.create(context).snapshot()
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = baseline.copy(operation = operation)
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult {
+                operationCount.incrementAndGet()
+                backendStarted.countDown()
+                releaseBackend.await()
+                return OperationResult(true, "setting updated")
+            }
+        }
+        val first = ThorSession(context, backend)
+        val second = ThorSession(context, backend)
+        val operationScope = CoroutineScope(Job() + Dispatchers.IO)
+        val lockEntered = CountDownLatch(1)
+        val releaseLock = CountDownLatch(1)
+        val firstRunner = thread(start = false) { first.run(operationScope, ThorOperation.SET_DPI, "320") }
+        val secondFinished = CountDownLatch(1)
+        val secondRunner = thread(start = false) {
+            try {
+                second.run(operationScope, ThorOperation.SET_DPI, "321")
+            } finally {
+                secondFinished.countDown()
+            }
+        }
+        val lockHolder = thread(start = false) {
+            withThorOperationStartLock {
+                lockEntered.countDown()
+                releaseLock.await()
+            }
+        }
+        try {
+            first.load()
+            second.load()
+            lockHolder.start()
+            assertTrue(lockEntered.await(5, TimeUnit.SECONDS))
+            firstRunner.start()
+            secondRunner.start()
+            releaseLock.countDown()
+            assertTrue(backendStarted.await(5, TimeUnit.SECONDS))
+            assertTrue(secondFinished.await(5, TimeUnit.SECONDS))
+            assertEquals(1, operationCount.get())
+            releaseBackend.countDown()
+            firstRunner.join(5_000L)
+            secondRunner.join(5_000L)
+            withTimeout(5_000L) {
+                while (first.snapshot.operation.status == OperationStatus.RUNNING ||
+                    second.snapshot.operation.status == OperationStatus.RUNNING
+                ) {
+                    delay(10L)
+                }
+            }
+            assertFalse(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
+        } finally {
+            releaseLock.countDown()
+            releaseBackend.countDown()
+            if (lockHolder.isAlive) lockHolder.join(5_000L)
+            if (firstRunner.isAlive) firstRunner.join(5_000L)
+            if (secondRunner.isAlive) secondRunner.join(5_000L)
+            operationScope.cancel()
             preferences.edit()
                 .remove(AppSettings.JOURNAL_OPERATION_KEY)
                 .remove(AppSettings.JOURNAL_MESSAGE_KEY)

@@ -69,6 +69,10 @@ enum class OperationStatus {
     INTERRUPTED,
 }
 
+private val thorOperationStartLock = Any()
+
+internal fun <T> withThorOperationStartLock(block: () -> T): T = synchronized(thorOperationStartLock, block)
+
 data class OperationState(
     val operation: ThorOperation? = null,
     val status: OperationStatus = OperationStatus.IDLE,
@@ -828,27 +832,35 @@ class ThorSession(
     }
 
     fun run(scope: CoroutineScope, operation: ThorOperation, argument: String? = null) {
-        if (snapshot.operation.status == OperationStatus.RUNNING || hasRecoveryJournal()) return
-        ThorOperationGuard.validate(snapshot, operation)?.let { message ->
-            snapshot = snapshot.copy(
-                operation = OperationState(operation, OperationStatus.FAILURE, message, snapshot.operation.rebootRequired),
-            )
-            return
-        }
-        val running = OperationState(
-            operation = operation,
-            status = OperationStatus.RUNNING,
-            message = "${operation.name.lowercase().replace('_', ' ')} in progress",
-            rebootRequired = operation.requiresRebootAfterWrite,
-        )
-        val operationBootMarker = SystemUtils.getBootMarker(context)
-        if (!persistJournal(running, operationBootMarker)) {
-            snapshot = snapshot.copy(
-                operation = OperationState(operation, OperationStatus.FAILURE, "Could not save the operation recovery record"),
-            )
-            return
-        }
-        snapshot = snapshot.copy(operation = running)
+        val prepared = withThorOperationStartLock {
+            if (snapshot.operation.status == OperationStatus.RUNNING || hasRecoveryJournal()) {
+                null
+            } else {
+                ThorOperationGuard.validate(snapshot, operation)?.let { message ->
+                    snapshot = snapshot.copy(
+                        operation = OperationState(operation, OperationStatus.FAILURE, message, snapshot.operation.rebootRequired),
+                    )
+                    return@withThorOperationStartLock null
+                }
+                val running = OperationState(
+                    operation = operation,
+                    status = OperationStatus.RUNNING,
+                    message = "${operation.name.lowercase().replace('_', ' ')} in progress",
+                    rebootRequired = operation.requiresRebootAfterWrite,
+                )
+                val operationBootMarker = SystemUtils.getBootMarker(context)
+                if (!persistJournal(running, operationBootMarker)) {
+                    snapshot = snapshot.copy(
+                        operation = OperationState(operation, OperationStatus.FAILURE, "Could not save the operation recovery record"),
+                    )
+                    return@withThorOperationStartLock null
+                }
+                snapshot = snapshot.copy(operation = running)
+                running to operationBootMarker
+            }
+        } ?: return
+        val running = prepared.first
+        val operationBootMarker = prepared.second
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 val result = try {
