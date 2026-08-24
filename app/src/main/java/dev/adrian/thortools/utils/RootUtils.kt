@@ -9,6 +9,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InputStreamReader
+import kotlin.math.abs
 
 fun copyAssetFolderToFilesDir(context: Context, assetFolderPath: String) {
     val assetManager = context.assets
@@ -48,6 +49,11 @@ object RootUtils {
         "init_boot.patch.sh",
         "init_boot.flash.sh",
         "init_boot.restore.sh",
+    )
+    private val animationSettingKeys = listOf(
+        "window_animation_scale",
+        "transition_animation_scale",
+        "animator_duration_scale",
     )
 
     val isDeviceRooted: Boolean
@@ -222,14 +228,58 @@ object RootUtils {
 
     fun startActivityRoot(context: Context, activity: String): Boolean = runRootAction(context, "am start -n $activity")
 
-    fun setAnimationSpeed(context: Context, animationSpeed: Float): Boolean =
-        runRootAction(context, "settings put global window_animation_scale $animationSpeed") &&
-            runRootAction(context, "settings put global transition_animation_scale $animationSpeed") &&
-            runRootAction(context, "settings put global animator_duration_scale $animationSpeed")
+    fun readAnimationSpeed(context: Context): Float? {
+        val values = animationSettingKeys.map { key ->
+            parseAnimationSpeedOutput(runRootCommand(context, "settings get global $key") ?: return null)
+                ?: return null
+        }
+        return resolveAnimationSpeed(values)
+    }
 
-    fun setDpi(context: Context, dpi: Int): Boolean = runRootAction(context, "wm density $dpi")
+    fun readDpi(context: Context): Int? = runRootCommand(context, "wm density")?.let(::parseDpiOutput)
+
+    fun setAnimationSpeed(context: Context, animationSpeed: Float): Boolean {
+        if (!animationSpeed.isFinite() || animationSpeed !in 0f..1f) return false
+        val changed = animationSettingKeys.all { key ->
+            runRootAction(context, "settings put global $key $animationSpeed")
+        }
+        return changed && readAnimationSpeed(context)?.let { actual ->
+            abs(actual - animationSpeed) < ANIMATION_READBACK_TOLERANCE
+        } == true
+    }
+
+    fun setDpi(context: Context, dpi: Int): Boolean =
+        dpi > 0 && runRootAction(context, "wm density $dpi") && readDpi(context) == dpi
 
     fun resetDpi(context: Context): Boolean = runRootAction(context, "resetprop -p ro.sf.lcd_density")
+
+    internal fun parseAnimationSpeedOutput(output: String): Float? = output
+        .trim()
+        .takeUnless { it.equals("null", ignoreCase = true) }
+        ?.toFloatOrNull()
+        ?.takeIf(Float::isFinite)
+
+    internal fun resolveAnimationSpeed(values: List<Float>): Float? {
+        val value = values.firstOrNull() ?: return null
+        return value.takeIf { values.all { other -> abs(other - value) < ANIMATION_READBACK_TOLERANCE } }
+    }
+
+    internal fun parseDpiOutput(output: String): Int? {
+        var physical: Int? = null
+        var override: Int? = null
+        DPI_OUTPUT_PATTERN.findAll(output).forEach { match ->
+            val value = match.groupValues[2].toIntOrNull() ?: return@forEach
+            if (match.groupValues[1].equals("Override", ignoreCase = true)) {
+                override = value
+            } else {
+                physical = value
+            }
+        }
+        return override ?: physical
+    }
+
+    private const val ANIMATION_READBACK_TOLERANCE = 0.001f
+    private val DPI_OUTPUT_PATTERN = Regex("(?im)^\\s*(Override|Physical) density:\\s*(\\d+)\\b")
 }
 
 internal fun resolveRootState(

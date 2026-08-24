@@ -427,6 +427,8 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         val magisk = MagiskUtil.hasMagiskPackage(context)
         val battery = SystemUtils.getBatteryPercent(context)
         val prefs = AppSettings.getSharedPrefs(context)
+        val liveDpi = rootService.takeIf { it }?.let { RootUtils.readDpi(context) }
+        val liveAnimationSpeed = rootService.takeIf { it }?.let { RootUtils.readAnimationSpeed(context) }
         val initBoot = rootService && RootUtils.hasPartition(context, "init_boot", properties.slot)
         val boot = rootService && RootUtils.hasPartition(context, "boot", properties.slot)
         val backupDestination = FileUtils.isBackupDestinationWritable(context)
@@ -448,9 +450,9 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         return ThorSnapshot(
             profile = DeviceProfile.detect(properties).copy(capabilities = capabilities),
             batteryPercent = battery ?: 0,
-            lcdDensity = AppSettings.getDpi(prefs, SystemUtils.getPropLcdDensity()),
+            lcdDensity = liveDpi ?: AppSettings.getDpi(prefs, SystemUtils.getPropLcdDensity()),
             volumeSteps = AppSettings.getVolumeSteps(prefs, SystemUtils.getPropVolumeSteps()),
-            animationSpeed = AppSettings.getAnimationSpeed(prefs),
+            animationSpeed = liveAnimationSpeed ?: AppSettings.getAnimationSpeed(prefs),
             activeSlot = properties.slot.ifBlank { "unknown" },
             kernelVersion = SystemUtils.getKernelVersion(context),
             rootServiceAvailable = rootService,

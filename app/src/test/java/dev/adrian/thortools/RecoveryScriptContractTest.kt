@@ -244,6 +244,20 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun systemTweaksVerifyLiveAndroidReadback() {
+        val rootUtils = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
+        val backend = File("src/main/java/dev/adrian/thortools/SystemBackend.kt").readText()
+        assertTrue(rootUtils.contains("fun readDpi(context: Context): Int?"))
+        assertTrue(rootUtils.contains("fun readAnimationSpeed(context: Context): Float?"))
+        assertTrue(rootUtils.contains("readDpi(context) == dpi"))
+        assertTrue(rootUtils.contains("readAnimationSpeed(context)?.let"))
+        assertTrue(backend.contains("val liveDpi = rootService.takeIf { it }?.let { RootUtils.readDpi(context) }"))
+        assertTrue(backend.contains("val liveAnimationSpeed = rootService.takeIf { it }?.let { RootUtils.readAnimationSpeed(context) }"))
+        assertTrue(backend.contains("lcdDensity = liveDpi ?:"))
+        assertTrue(backend.contains("animationSpeed = liveAnimationSpeed ?:"))
+    }
+
+    @Test
     fun supportFilesAndScriptsUseAtomicReplacement() {
         val fileUtils = File("src/main/java/dev/adrian/thortools/utils/FileUtils.kt").readText()
         val rootUtils = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()

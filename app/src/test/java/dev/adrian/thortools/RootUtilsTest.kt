@@ -3,6 +3,8 @@ package dev.adrian.thortools
 import dev.adrian.thortools.utils.resolveRootState
 import dev.adrian.thortools.utils.RootUtils
 import java.nio.file.Files
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,6 +20,25 @@ class RootUtilsTest {
     fun fallsBackToTheLocalHeuristicWhenTheServiceIsUnavailable() {
         assertTrue(resolveRootState(rootServiceAvailable = false, serviceRooted = false, heuristicRooted = true))
         assertFalse(resolveRootState(rootServiceAvailable = false, serviceRooted = true, heuristicRooted = false))
+    }
+
+    @Test
+    fun prefersTheDpiOverrideReportedByAndroid() {
+        assertEquals(
+            480,
+            RootUtils.parseDpiOutput("Physical density: 420\nOverride density: 480"),
+        )
+        assertEquals(420, RootUtils.parseDpiOutput("Physical density: 420"))
+        assertNull(RootUtils.parseDpiOutput("Override density: unknown"))
+    }
+
+    @Test
+    fun parsesAnimationReadbackValuesAndRejectsMissingSettings() {
+        assertEquals(0.5f, RootUtils.parseAnimationSpeedOutput("0.5"))
+        assertNull(RootUtils.parseAnimationSpeedOutput("null"))
+        assertNull(RootUtils.parseAnimationSpeedOutput("not-a-number"))
+        assertEquals(0.5f, RootUtils.resolveAnimationSpeed(listOf(0.5f, 0.5f, 0.5f)))
+        assertNull(RootUtils.resolveAnimationSpeed(listOf(0.5f, 1f, 0.5f)))
     }
 
     @Test
