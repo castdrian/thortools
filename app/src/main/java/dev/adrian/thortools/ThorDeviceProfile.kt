@@ -95,7 +95,7 @@ object DeviceProfile {
             properties.soc,
             properties.platform,
         ).joinToString(" ").normalized()
-        val isThor = searchable.containsThorIdentifier()
+        val isThor = searchable.containsThorIdentifier() || isAynThorBoard(properties)
         return ThorDeviceProfile(properties, isThor, variantFor(properties))
     }
 
@@ -139,6 +139,14 @@ object DeviceProfile {
             properties.platform,
         ).joinToString(" ").normalized()
         return litePlatformPattern.containsMatchIn(platform)
+    }
+
+    private fun isAynThorBoard(properties: DeviceProperties): Boolean {
+        val hasAynIdentity = listOf(properties.manufacturer, properties.brand)
+            .map { it.normalized() }
+            .any { value -> value.split(' ').any { token -> token == "ayn" } }
+        val hasKalamaBoard = properties.board.normalized() == "kalama"
+        return hasAynIdentity && hasKalamaBoard
     }
 
     private fun String.normalized(): String = identifierSeparatorPattern.replace(lowercase(), " ").trim()

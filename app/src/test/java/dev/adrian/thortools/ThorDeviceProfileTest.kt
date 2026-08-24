@@ -26,6 +26,8 @@ class ThorDeviceProfileTest {
         assertEquals(ThorVariant.UNKNOWN, DeviceProfile.detect(DeviceProperties(model = "AYN Thor", board = "lahaina")).variant)
         assertEquals(ThorVariant.UNKNOWN, DeviceProfile.detect(DeviceProperties(model = "AYN Thor", board = "kalama")).variant)
         assertTrue(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", model = "Thor")).isThor)
+        assertTrue(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", board = "kalama")).isThor)
+        assertTrue(DeviceProfile.detect(DeviceProperties(brand = "AYN", board = "KALAMA")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(hardware = "thor_lite")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(board = "thor_max_board")).isThor)
     }
@@ -47,6 +49,8 @@ class ThorDeviceProfileTest {
     fun doesNotTreatOtherDevicesAsThor() {
         assertFalse(DeviceProfile.detect(DeviceProperties(model = "AYN Loki")).isThor)
         assertFalse(DeviceProfile.detect(DeviceProperties(model = "Retroid Pocket Mini")).isThor)
+        assertFalse(DeviceProfile.detect(DeviceProperties(manufacturer = "Qualcomm", board = "kalama")).isThor)
+        assertFalse(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", board = "kalama_fake")).isThor)
     }
 
     @Test
