@@ -210,6 +210,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
             volumeSteps = AppSettings.getVolumeSteps(preferences, 20),
             animationSpeed = AppSettings.getAnimationSpeed(preferences, 1f),
             moduleSyncState = AppSettings.getModuleSyncState(preferences),
+            displayDiagnostics = readThorDisplayDiagnostics(context),
             backupAvailable = state.activeSlot in stockSlots,
             stockRestoreAvailable = state.activeSlot in stockSlots,
             patchedBackupAvailable = state.activeSlot in patchedSlots,
