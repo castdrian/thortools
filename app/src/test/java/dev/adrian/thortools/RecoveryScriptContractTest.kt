@@ -199,6 +199,13 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun moduleSnapshotChecksTheLiveInstalledModuleWhenTheRootServiceIsReady() {
+        val source = File("src/main/java/dev/adrian/thortools/SystemBackend.kt").readText()
+        assertTrue(source.contains("val moduleInstalled = rootService.takeIf { it }?.let { RootUtils.isThorToolsMagiskModuleInstalled(context) }"))
+        assertTrue(source.contains("AppSettings.getModuleSyncState(prefs, moduleInstalled)"))
+    }
+
+    @Test
     fun moduleInstallationStagesAndRecoversThePreviousCopy() {
         val source = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
         assertTrue(source.contains(".thortools-staging"))

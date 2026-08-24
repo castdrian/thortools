@@ -20,8 +20,13 @@ enum class ThorModuleSyncState {
         }
 
     companion object {
-        fun fromStored(value: String?, moduleConfigured: Boolean): ThorModuleSyncState {
+        fun fromStored(
+            value: String?,
+            moduleConfigured: Boolean,
+            moduleInstalled: Boolean? = null,
+        ): ThorModuleSyncState {
             val stored = value?.let { runCatching { valueOf(it) }.getOrNull() }
+            if (moduleConfigured && moduleInstalled == false && stored == SYNCED) return FAILED
             return when {
                 stored == null && moduleConfigured -> PENDING
                 stored == NOT_CONFIGURED && moduleConfigured -> PENDING
@@ -97,9 +102,9 @@ object AppSettings {
         return result
     }
 
-    fun getModuleSyncState(sharedPrefs: SharedPreferences): ThorModuleSyncState {
+    fun getModuleSyncState(sharedPrefs: SharedPreferences, moduleInstalled: Boolean? = null): ThorModuleSyncState {
         val stored = runCatching { sharedPrefs.getString(MODULE_SYNC_STATE_KEY, null) }.getOrNull()
-        return ThorModuleSyncState.fromStored(stored, hasModuleSettings(sharedPrefs))
+        return ThorModuleSyncState.fromStored(stored, hasModuleSettings(sharedPrefs), moduleInstalled)
     }
 
     fun setModuleSyncState(sharedPrefs: SharedPreferences, state: ThorModuleSyncState): Boolean =

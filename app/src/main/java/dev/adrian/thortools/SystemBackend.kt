@@ -348,7 +348,8 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         val boot = rootService && RootUtils.hasPartition(context, "boot", properties.slot)
         val backupDestination = FileUtils.isBackupDestinationWritable(context)
         val availableBootSlots = PatchUtils.availableBootSlots(context)
-        val moduleSyncState = AppSettings.getModuleSyncState(prefs)
+        val moduleInstalled = rootService.takeIf { it }?.let { RootUtils.isThorToolsMagiskModuleInstalled(context) }
+        val moduleSyncState = AppSettings.getModuleSyncState(prefs, moduleInstalled)
         val capabilities = buildSet {
             if (rootService) add(ThorCapability.ROOT_SERVICE)
             if (rooted) add(ThorCapability.ROOTED)

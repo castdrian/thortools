@@ -24,6 +24,18 @@ class ThorModuleSyncStateTest {
     }
 
     @Test
+    fun marksAPreviouslySyncedModuleAsFailedWhenLiveRootStateCannotFindIt() {
+        assertEquals(
+            ThorModuleSyncState.FAILED,
+            ThorModuleSyncState.fromStored("SYNCED", moduleConfigured = true, moduleInstalled = false),
+        )
+        assertEquals(
+            ThorModuleSyncState.SYNCED,
+            ThorModuleSyncState.fromStored("SYNCED", moduleConfigured = true, moduleInstalled = null),
+        )
+    }
+
+    @Test
     fun exposesStableLabels() {
         assertEquals("Not configured", ThorModuleSyncState.NOT_CONFIGURED.label)
         assertEquals("Pending", ThorModuleSyncState.PENDING.label)
