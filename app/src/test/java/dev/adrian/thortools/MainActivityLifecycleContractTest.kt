@@ -7,6 +7,17 @@ import org.junit.Test
 
 class MainActivityLifecycleContractTest {
     @Test
+    fun launchesTheDualDisplayWorkflowDirectly() {
+        val manifest = File("src/main/AndroidManifest.xml").readText()
+        val mainActivity = manifest.substringAfter("android:name=\".MainActivity\"").substringBefore("</activity>")
+
+        assertTrue(mainActivity.contains("android:exported=\"true\""))
+        assertTrue(mainActivity.contains("<action android:name=\"android.intent.action.MAIN\" />"))
+        assertTrue(mainActivity.contains("<category android:name=\"android.intent.category.LAUNCHER\" />"))
+        assertFalse(manifest.contains("android:name=\".PermissionActivity\""))
+    }
+
+    @Test
     fun retriesTheLowerPresentationAcrossDisplayRecreation() {
         val source = File("src/main/java/dev/adrian/thortools/MainActivity.kt").readText()
         val show = source.substringAfter("private fun showSecondaryDisplay()").substringBefore("private fun scheduleSecondaryDisplayRetry")
