@@ -130,6 +130,13 @@ class ThorToolsInstrumentedTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val snapshot = SystemBackendFactory.create(context).snapshot()
         assertEquals(ThorVariant.PRO, snapshot.profile.variant)
+        assertEquals("AYN", snapshot.profile.properties.manufacturer)
+        assertEquals("AYN", snapshot.profile.properties.brand)
+        assertEquals("odin2thor", snapshot.profile.properties.device)
+        assertEquals("odin2thor", snapshot.profile.properties.product)
+        assertEquals("kalama", snapshot.profile.properties.board)
+        assertEquals("qcs8550", snapshot.profile.properties.soc)
+        assertEquals("sm8550", snapshot.profile.properties.platform)
         assertTrue(snapshot.rootServiceAvailable)
         assertTrue(snapshot.backupDestinationWritable)
         assertTrue(RootUtils.areSupportFilesReady(context))
