@@ -199,10 +199,11 @@ class RecoveryScriptContractTest {
     }
 
     @Test
-    fun moduleSnapshotChecksTheLiveInstalledModuleWhenTheRootServiceIsReady() {
+    fun moduleSnapshotChecksLiveModuleVerificationWhenTheRootServiceIsReady() {
         val source = File("src/main/java/dev/adrian/thortools/SystemBackend.kt").readText()
         assertTrue(source.contains("val moduleInstalled = rootService.takeIf { it }?.let { RootUtils.isThorToolsMagiskModuleInstalled(context) }"))
-        assertTrue(source.contains("AppSettings.getModuleSyncState(prefs, moduleInstalled)"))
+        assertTrue(source.contains("AppSettings.getModuleSyncState(prefs, moduleInstalled, rootService)"))
+        assertTrue(source.contains("AppSettings.getBootOverrideState(prefs, rootService)"))
     }
 
     @Test

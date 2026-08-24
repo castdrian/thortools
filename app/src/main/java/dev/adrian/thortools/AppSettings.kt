@@ -9,6 +9,7 @@ enum class ThorModuleSyncState {
     NOT_CONFIGURED,
     PENDING,
     SYNCED,
+    UNVERIFIED,
     FAILED;
 
     val label: String
@@ -16,6 +17,7 @@ enum class ThorModuleSyncState {
             NOT_CONFIGURED -> "Not configured"
             PENDING -> "Pending"
             SYNCED -> "Synced"
+            UNVERIFIED -> "Not verified"
             FAILED -> "Failed"
         }
 
@@ -24,12 +26,15 @@ enum class ThorModuleSyncState {
             value: String?,
             moduleConfigured: Boolean,
             moduleInstalled: Boolean? = null,
+            verificationAvailable: Boolean = true,
         ): ThorModuleSyncState {
+            if (!moduleConfigured) return NOT_CONFIGURED
             val stored = value?.let { runCatching { valueOf(it) }.getOrNull() }
             if (moduleConfigured && moduleInstalled == false && stored == SYNCED) return FAILED
             return when {
                 stored == null && moduleConfigured -> PENDING
                 stored == NOT_CONFIGURED && moduleConfigured -> PENDING
+                stored == SYNCED && !verificationAvailable -> UNVERIFIED
                 stored == null -> NOT_CONFIGURED
                 else -> stored
             }
@@ -41,6 +46,7 @@ enum class ThorBootOverrideState {
     NOT_CONFIGURED,
     PENDING,
     APPLIED,
+    UNVERIFIED,
     FAILED;
 
     val label: String
@@ -48,15 +54,17 @@ enum class ThorBootOverrideState {
             NOT_CONFIGURED -> "Not configured"
             PENDING -> "Pending"
             APPLIED -> "Applied"
+            UNVERIFIED -> "Not verified"
             FAILED -> "Failed"
         }
 
     companion object {
-        fun fromStored(value: String?, configured: Boolean): ThorBootOverrideState {
+        fun fromStored(value: String?, configured: Boolean, verificationAvailable: Boolean = true): ThorBootOverrideState {
             val stored = value?.let { runCatching { valueOf(it) }.getOrNull() }
             return when {
                 !configured -> NOT_CONFIGURED
                 stored == null || stored == NOT_CONFIGURED -> PENDING
+                stored == APPLIED && !verificationAvailable -> UNVERIFIED
                 else -> stored
             }
         }
@@ -129,18 +137,23 @@ object AppSettings {
         return result
     }
 
-    fun getModuleSyncState(sharedPrefs: SharedPreferences, moduleInstalled: Boolean? = null): ThorModuleSyncState {
+    fun getModuleSyncState(
+        sharedPrefs: SharedPreferences,
+        moduleInstalled: Boolean? = null,
+        verificationAvailable: Boolean = true,
+    ): ThorModuleSyncState {
         val stored = runCatching { sharedPrefs.getString(MODULE_SYNC_STATE_KEY, null) }.getOrNull()
-        return ThorModuleSyncState.fromStored(stored, hasModuleSettings(sharedPrefs), moduleInstalled)
+        return ThorModuleSyncState.fromStored(stored, hasModuleSettings(sharedPrefs), moduleInstalled, verificationAvailable)
     }
 
     fun setModuleSyncState(sharedPrefs: SharedPreferences, state: ThorModuleSyncState): Boolean =
         sharedPrefs.edit().putString(MODULE_SYNC_STATE_KEY, state.name).commit()
 
-    fun getBootOverrideState(sharedPrefs: SharedPreferences): ThorBootOverrideState =
+    fun getBootOverrideState(sharedPrefs: SharedPreferences, verificationAvailable: Boolean = true): ThorBootOverrideState =
         ThorBootOverrideState.fromStored(
             runCatching { sharedPrefs.getString(BOOT_OVERRIDE_STATE_KEY, null) }.getOrNull(),
             hasBootOverrideSettings(sharedPrefs),
+            verificationAvailable,
         )
 
     fun setBootOverrideState(sharedPrefs: SharedPreferences, state: ThorBootOverrideState): Boolean =

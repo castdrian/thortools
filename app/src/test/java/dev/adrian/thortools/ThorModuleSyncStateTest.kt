@@ -11,6 +11,14 @@ class ThorModuleSyncStateTest {
     }
 
     @Test
+    fun treatsRemovedModulePreferencesAsNotConfigured() {
+        assertEquals(
+            ThorModuleSyncState.NOT_CONFIGURED,
+            ThorModuleSyncState.fromStored("SYNCED", moduleConfigured = false),
+        )
+    }
+
+    @Test
     fun preservesKnownPersistedStates() {
         ThorModuleSyncState.entries.forEach { state ->
             assertEquals(state, ThorModuleSyncState.fromStored(state.name, moduleConfigured = state != ThorModuleSyncState.NOT_CONFIGURED))
@@ -36,10 +44,23 @@ class ThorModuleSyncStateTest {
     }
 
     @Test
+    fun marksAPreviouslySyncedModuleAsUnverifiedWhenRootServiceIsUnavailable() {
+        assertEquals(
+            ThorModuleSyncState.UNVERIFIED,
+            ThorModuleSyncState.fromStored(
+                "SYNCED",
+                moduleConfigured = true,
+                verificationAvailable = false,
+            ),
+        )
+    }
+
+    @Test
     fun exposesStableLabels() {
         assertEquals("Not configured", ThorModuleSyncState.NOT_CONFIGURED.label)
         assertEquals("Pending", ThorModuleSyncState.PENDING.label)
         assertEquals("Synced", ThorModuleSyncState.SYNCED.label)
+        assertEquals("Not verified", ThorModuleSyncState.UNVERIFIED.label)
         assertEquals("Failed", ThorModuleSyncState.FAILED.label)
     }
 }

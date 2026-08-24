@@ -68,6 +68,10 @@ class ThorRecoveryGuidanceTest {
             "ThorTools module synchronization is pending. Keep the Thor rooted and wait for the dashboard to report it synced.",
             ThorRecoveryGuidance.forSnapshot(snapshot().copy(moduleSyncState = ThorModuleSyncState.PENDING)),
         )
+        assertEquals(
+            "ThorTools cannot verify its Magisk module yet. Refresh after the privileged service is available.",
+            ThorRecoveryGuidance.forSnapshot(snapshot().copy(moduleSyncState = ThorModuleSyncState.UNVERIFIED)),
+        )
     }
 
     @Test
@@ -79,6 +83,10 @@ class ThorRecoveryGuidanceTest {
         assertEquals(
             "ThorTools has a saved DPI or animation override that has not been confirmed after boot. Refresh after the privileged service is available.",
             ThorRecoveryGuidance.forSnapshot(snapshot().copy(bootOverrideState = ThorBootOverrideState.PENDING)),
+        )
+        assertEquals(
+            "ThorTools cannot verify its saved DPI or animation override yet. Refresh after the privileged service is available.",
+            ThorRecoveryGuidance.forSnapshot(snapshot().copy(bootOverrideState = ThorBootOverrideState.UNVERIFIED)),
         )
     }
 

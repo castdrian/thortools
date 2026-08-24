@@ -435,7 +435,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         val supportFiles = RootUtils.areSupportFilesReady(context)
         val availableBootSlots = PatchUtils.availableBootSlots(context)
         val moduleInstalled = rootService.takeIf { it }?.let { RootUtils.isThorToolsMagiskModuleInstalled(context) }
-        val moduleSyncState = AppSettings.getModuleSyncState(prefs, moduleInstalled)
+        val moduleSyncState = AppSettings.getModuleSyncState(prefs, moduleInstalled, rootService)
         val capabilities = buildSet {
             if (rootService) add(ThorCapability.ROOT_SERVICE)
             if (rooted) add(ThorCapability.ROOTED)
@@ -471,7 +471,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             operation = operation,
             displayDiagnostics = readThorDisplayDiagnostics(context),
             moduleSyncState = moduleSyncState,
-            bootOverrideState = AppSettings.getBootOverrideState(prefs),
+            bootOverrideState = AppSettings.getBootOverrideState(prefs, rootService),
         )
     }
 

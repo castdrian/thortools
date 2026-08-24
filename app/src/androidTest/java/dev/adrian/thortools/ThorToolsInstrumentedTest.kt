@@ -81,6 +81,10 @@ class ThorToolsInstrumentedTest {
             assertEquals(ThorModuleSyncState.FAILED, AppSettings.getModuleSyncState(preferences))
             AppSettings.setModuleSyncState(preferences, ThorModuleSyncState.SYNCED)
             assertEquals(ThorModuleSyncState.SYNCED, AppSettings.getModuleSyncState(preferences))
+            assertEquals(
+                ThorModuleSyncState.UNVERIFIED,
+                AppSettings.getModuleSyncState(preferences, verificationAvailable = false),
+            )
         } finally {
             preferences.edit().clear().commit()
         }

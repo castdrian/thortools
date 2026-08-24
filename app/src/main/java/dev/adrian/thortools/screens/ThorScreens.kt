@@ -534,6 +534,7 @@ private fun TweaksPanel(session: ThorSession, context: Context, operationScope: 
         }
         when (snapshot.moduleSyncState) {
             ThorModuleSyncState.PENDING -> Text("ThorTools module synchronization is pending. Keep the Thor rooted and wait for the dashboard to report it synced.", color = MaterialTheme.colorScheme.error)
+            ThorModuleSyncState.UNVERIFIED -> Text("ThorTools cannot verify its Magisk module yet. Refresh after the privileged service is available.", color = MaterialTheme.colorScheme.error)
             ThorModuleSyncState.FAILED -> Text("ThorTools could not synchronize its Magisk module. Verify root access and retry the module setting.", color = MaterialTheme.colorScheme.error)
             else -> Unit
         }

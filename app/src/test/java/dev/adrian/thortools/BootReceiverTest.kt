@@ -109,6 +109,10 @@ class BootReceiverTest {
         assertEquals(ThorBootOverrideState.PENDING, ThorBootOverrideState.fromStored(null, configured = true))
         assertEquals(ThorBootOverrideState.NOT_CONFIGURED, ThorBootOverrideState.fromStored("FAILED", configured = false))
         assertEquals(ThorBootOverrideState.APPLIED, ThorBootOverrideState.fromStored("APPLIED", configured = true))
+        assertEquals(
+            ThorBootOverrideState.UNVERIFIED,
+            ThorBootOverrideState.fromStored("APPLIED", configured = true, verificationAvailable = false),
+        )
     }
 
     @Test
