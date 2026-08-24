@@ -27,6 +27,10 @@ class ThorDiagnosticsReportTest {
                 ),
             ),
             activeSlot = "_b",
+            availablePartitionsBySlot = mapOf(
+                "_a" to setOf("boot", "init_boot"),
+                "_b" to setOf("boot"),
+            ),
             bootOverrideState = ThorBootOverrideState.FAILED,
             displayDiagnostics = ThorDisplayDiagnostics(
                 upper = ThorDisplayPanel(0, 1920, 1080, 120f),
@@ -58,6 +62,7 @@ class ThorDiagnosticsReportTest {
         assertTrue(report.contains("buildProduct=odin2thor"))
         assertTrue(report.contains("serial=thor-serial"))
         assertTrue(report.contains("activeSlot=_b"))
+        assertTrue(report.contains("availablePartitionsBySlot=_a:boot+init_boot,_b:boot"))
         assertTrue(report.contains("operation=FLASH"))
         assertTrue(report.contains("operationStatus=FAILURE"))
         assertTrue(report.contains("operationRebootRequired=true"))

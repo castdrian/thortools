@@ -231,6 +231,7 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
             DataLine("Serial", snapshot.profile.properties.serial)
             DataLine("Active slot", snapshot.activeSlot)
             DataLine("Available boot slots", snapshot.availableBootSlots.sorted().joinToString(", "))
+            DataLine("Partitions by slot", snapshot.partitionLayoutLabel)
             DataLine("Root service", if (snapshot.rootServiceAvailable) "Available" else "Unavailable")
             DataLine("Root state", if (snapshot.rooted) "Rooted" else "Not rooted")
             DataLine("Magisk", if (snapshot.magiskInstalled) "Installed" else "Not installed")
@@ -608,6 +609,8 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
         val confirmationDetails = buildString {
             append("\n\nActive slot: ")
             append(snapshot.activeSlot)
+            append("\nPartitions by slot: ")
+            append(snapshot.partitionLayoutLabel)
             append("\nRecovery folder: ")
             append(context.getExternalFilesDir(null)?.absolutePath ?: "Unavailable")
             if (operation == ThorOperation.RESTORE && snapshot.stockRestoreAvailable) {

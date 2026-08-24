@@ -65,6 +65,10 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         patchedBackupAvailable = false,
         patchedCacheAvailable = false,
         availableBootSlots = setOf("_a", "_b"),
+        availablePartitionsBySlot = mapOf(
+            "_a" to setOf("boot", "init_boot"),
+            "_b" to setOf("boot", "init_boot"),
+        ),
         stockBackupSlots = emptySet(),
         stockRecoverySlots = emptySet(),
         patchedBackupSlots = emptySet(),

@@ -33,6 +33,14 @@ object ThorDiagnosticsReport {
         appendProperty("serial", snapshot.profile.properties.serial)
         appendProperty("activeSlot", snapshot.activeSlot)
         appendProperty("availableBootSlots", snapshot.availableBootSlots.sorted().joinToString(","))
+        appendProperty(
+            "availablePartitionsBySlot",
+            snapshot.availablePartitionsBySlot.entries
+                .sortedBy { it.key }
+                .joinToString(",") { (slot, partitions) ->
+                    "$slot:${partitions.sorted().joinToString("+")}"
+                },
+        )
         appendProperty("kernelVersion", snapshot.kernelVersion)
         appendLine("batteryPercent=${snapshot.batteryPercent}")
         appendLine("lcdDensity=${snapshot.lcdDensity}")

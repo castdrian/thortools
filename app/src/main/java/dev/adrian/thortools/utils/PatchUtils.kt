@@ -48,9 +48,15 @@ object PatchUtils {
     internal fun hasCompleteSlotCoverage(requiredSlots: Set<String>, backedUpSlots: Set<String>): Boolean =
         requiredSlots.isNotEmpty() && requiredSlots.all(backedUpSlots::contains)
 
-    fun availableBootSlots(context: Context): Set<String> = slots.filter { slot ->
-        preferredPartition(context, slot) != null
-    }.toSet()
+    fun availableBootSlots(context: Context): Set<String> = availablePartitionsBySlot(context).keys
+
+    fun availablePartitionsBySlot(context: Context): Map<String, Set<String>> = slots.mapNotNull { slot ->
+        val partitions = buildSet {
+            if (RootUtils.findPartition(context, "init_boot", slot) != null) add("init_boot")
+            if (RootUtils.findPartition(context, "boot", slot) != null) add("boot")
+        }
+        slot.takeIf { partitions.isNotEmpty() }?.let { it to partitions }
+    }.toMap()
 
     fun stockBackupSlots(context: Context): Set<String> = slots.filter { slot ->
         val partition = preferredPartition(context, slot) ?: return@filter false

@@ -51,6 +51,19 @@ class PatchUtilsTest {
     }
 
     @Test
+    fun formatsThePerSlotPartitionLayoutForSafetyPrompts() {
+        val snapshot = ThorSnapshot.loading(OperationState()).copy(
+            availablePartitionsBySlot = mapOf(
+                "_b" to setOf("boot"),
+                "_a" to setOf("init_boot", "boot"),
+            ),
+        )
+
+        assertEquals("_a: boot + init_boot; _b: boot", snapshot.partitionLayoutLabel)
+        assertEquals("Unavailable", ThorSnapshot.loading(OperationState()).partitionLayoutLabel)
+    }
+
+    @Test
     fun selectPartitionUsesInitBootWhenBothPartitionsExist() {
         assertEquals("init_boot", PatchUtils.selectPartition(initBootAvailable = true, bootAvailable = true))
         assertEquals("init_boot", PatchUtils.selectPartition(initBootAvailable = true, bootAvailable = false))

@@ -159,6 +159,7 @@ data class ThorSnapshot(
     val patchedBackupAvailable: Boolean,
     val patchedCacheAvailable: Boolean = false,
     val availableBootSlots: Set<String> = emptySet(),
+    val availablePartitionsBySlot: Map<String, Set<String>> = emptyMap(),
     val stockBackupSlots: Set<String> = emptySet(),
     val stockRecoverySlots: Set<String> = emptySet(),
     val patchedBackupSlots: Set<String> = emptySet(),
@@ -182,6 +183,14 @@ data class ThorSnapshot(
         get() = availableBootSlots.isNotEmpty() && availableBootSlots.all { slot ->
             slot in stockBackupSlots || slot in stockRecoverySlots
         }
+
+    val partitionLayoutLabel: String
+        get() = availablePartitionsBySlot.entries
+            .sortedBy { it.key }
+            .joinToString("; ") { (slot, partitions) ->
+                "$slot: ${partitions.sorted().joinToString(" + ")}"
+            }
+            .ifBlank { "Unavailable" }
 
     val capabilityRows: List<Pair<String, Boolean>>
         get() = listOf(
@@ -221,6 +230,7 @@ data class ThorSnapshot(
             patchedBackupAvailable = false,
             patchedCacheAvailable = false,
             availableBootSlots = emptySet(),
+            availablePartitionsBySlot = emptyMap(),
             stockBackupSlots = emptySet(),
             stockRecoverySlots = emptySet(),
             patchedBackupSlots = emptySet(),
@@ -438,11 +448,17 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         val prefs = AppSettings.getSharedPrefs(context)
         val liveDpi = rootService.takeIf { it }?.let { RootUtils.readDpi(context) }
         val liveAnimationSpeed = rootService.takeIf { it }?.let { RootUtils.readAnimationSpeed(context) }
-        val initBoot = rootService && RootUtils.hasPartition(context, "init_boot", properties.slot)
-        val boot = rootService && RootUtils.hasPartition(context, "boot", properties.slot)
+        val availablePartitionsBySlot = if (rootService) {
+            PatchUtils.availablePartitionsBySlot(context)
+        } else {
+            emptyMap()
+        }
+        val activePartitions = availablePartitionsBySlot[properties.slot].orEmpty()
+        val initBoot = "init_boot" in activePartitions
+        val boot = "boot" in activePartitions
         val backupDestination = FileUtils.isBackupDestinationWritable(context)
         val supportFiles = RootUtils.areSupportFilesReady(context)
-        val availableBootSlots = PatchUtils.availableBootSlots(context)
+        val availableBootSlots = availablePartitionsBySlot.keys
         val moduleInstalled = rootService.takeIf { it }?.let { RootUtils.isThorToolsMagiskModuleInstalled(context) }
         val moduleSyncState = AppSettings.getModuleSyncState(prefs, moduleInstalled, rootService)
         val capabilities = buildSet {
@@ -475,6 +491,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             patchedBackupAvailable = PatchUtils.checkBootMagiskExists(context),
             patchedCacheAvailable = PatchUtils.hasPatchedCache(context),
             availableBootSlots = availableBootSlots,
+            availablePartitionsBySlot = availablePartitionsBySlot,
             stockBackupSlots = PatchUtils.stockBackupSlots(context),
             stockRecoverySlots = PatchUtils.stockRecoverySlots(context),
             patchedBackupSlots = PatchUtils.patchedBackupSlots(context),

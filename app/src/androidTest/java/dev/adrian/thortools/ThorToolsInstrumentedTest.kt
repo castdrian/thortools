@@ -145,6 +145,13 @@ class ThorToolsInstrumentedTest {
         assertTrue(snapshot.backupDestinationWritable)
         assertTrue(RootUtils.areSupportFilesReady(context))
         assertTrue(snapshot.profile.supports(ThorCapability.SUPPORT_FILES))
+        assertEquals(
+            mapOf(
+                "_a" to setOf("boot", "init_boot"),
+                "_b" to setOf("boot", "init_boot"),
+            ),
+            snapshot.availablePartitionsBySlot,
+        )
         assertTrue(snapshot.displayDiagnostics.dualDisplayReady)
         assertEquals(ThorDisplayMode.DUAL, snapshot.displayDiagnostics.mode)
         assertEquals("1920 x 1080", snapshot.displayDiagnostics.upper.geometryLabel)
