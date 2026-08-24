@@ -29,4 +29,39 @@ class ThorDisplayRoleTest {
         assertEquals(ThorDisplayRole.UPPER, ThorDisplayRole.LOWER.opposite())
         assertEquals(ThorDisplayRole.UNKNOWN, ThorDisplayRole.UNKNOWN.opposite())
     }
+
+    @Test
+    fun preservesTheReadOnlyUpperRoleWhenDefaultDisplayGeometryIsTransientlyUnknown() {
+        assertEquals(
+            ThorDisplayRole.UPPER,
+            resolvePrimaryDisplayRole(
+                observedRole = ThorDisplayRole.UNKNOWN,
+                isDefaultDisplay = true,
+                hasUpperDisplay = true,
+                hasLowerDisplay = true,
+            ),
+        )
+        assertEquals(
+            ThorDisplayRole.LOWER,
+            resolvePrimaryDisplayRole(
+                observedRole = ThorDisplayRole.UNKNOWN,
+                isDefaultDisplay = true,
+                hasUpperDisplay = false,
+                hasLowerDisplay = true,
+            ),
+        )
+    }
+
+    @Test
+    fun neverInfersASecondaryWindowAsThePrimaryRole() {
+        assertEquals(
+            ThorDisplayRole.UNKNOWN,
+            resolvePrimaryDisplayRole(
+                observedRole = ThorDisplayRole.UNKNOWN,
+                isDefaultDisplay = false,
+                hasUpperDisplay = true,
+                hasLowerDisplay = true,
+            ),
+        )
+    }
 }

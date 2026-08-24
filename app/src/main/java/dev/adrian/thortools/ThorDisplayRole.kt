@@ -21,3 +21,16 @@ enum class ThorDisplayRole {
         }
     }
 }
+
+internal fun resolvePrimaryDisplayRole(
+    observedRole: ThorDisplayRole,
+    isDefaultDisplay: Boolean,
+    hasUpperDisplay: Boolean,
+    hasLowerDisplay: Boolean,
+): ThorDisplayRole = when {
+    observedRole != ThorDisplayRole.UNKNOWN -> observedRole
+    !isDefaultDisplay -> ThorDisplayRole.UNKNOWN
+    hasUpperDisplay -> ThorDisplayRole.UPPER
+    hasLowerDisplay -> ThorDisplayRole.LOWER
+    else -> ThorDisplayRole.UNKNOWN
+}

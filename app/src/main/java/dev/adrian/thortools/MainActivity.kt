@@ -186,20 +186,31 @@ class MainActivity : ComponentActivity() {
         } catch (_: WindowManager.BadTokenException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
             secondaryDisplayShown = false
+            runCatching { presentation.dismiss() }
             scheduleSecondaryDisplayRetry()
         } catch (_: WindowManager.InvalidDisplayException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
             secondaryDisplayShown = false
+            runCatching { presentation.dismiss() }
             scheduleSecondaryDisplayRetry()
         } catch (_: RuntimeException) {
             if (secondaryPresentation === presentation) secondaryPresentation = null
             secondaryDisplayShown = false
+            runCatching { presentation.dismiss() }
             scheduleSecondaryDisplayRetry()
         }
     }
 
     private fun updatePrimaryDisplayRole() {
-        primaryDisplayRole = findActivityDisplay()?.thorDisplayRole() ?: ThorDisplayRole.UNKNOWN
+        val activityDisplay = findActivityDisplay()
+        val displays = runCatching { displayManager?.displays?.toList().orEmpty() }
+            .getOrDefault(emptyList())
+        primaryDisplayRole = resolvePrimaryDisplayRole(
+            observedRole = activityDisplay?.thorDisplayRole() ?: ThorDisplayRole.UNKNOWN,
+            isDefaultDisplay = activityDisplay?.displayId == Display.DEFAULT_DISPLAY,
+            hasUpperDisplay = displays.any { it.thorDisplayRole() == ThorDisplayRole.UPPER },
+            hasLowerDisplay = displays.any { it.thorDisplayRole() == ThorDisplayRole.LOWER },
+        )
     }
 
     private fun findActivityDisplay(): Display? = runCatching {

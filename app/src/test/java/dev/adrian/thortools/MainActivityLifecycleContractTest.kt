@@ -49,6 +49,7 @@ class MainActivityLifecycleContractTest {
         assertTrue(removed.contains("scheduleSecondaryDisplayRetry()"))
         assertTrue(show.contains("catch (_: WindowManager.BadTokenException)"))
         assertTrue(show.contains("catch (_: WindowManager.InvalidDisplayException)"))
+        assertTrue(show.contains("runCatching { presentation.dismiss() }"))
         assertTrue(show.contains("secondaryDisplayShown = false"))
         assertTrue(show.contains("secondaryDisplayShown = secondaryPresentation === presentation && presentation.isShowing"))
         assertTrue(show.contains("existing.requestInputFocus()"))
