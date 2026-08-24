@@ -112,12 +112,12 @@ jobs:
               ''|*[!0-9]*) exit 1 ;;
             esac
             test "$prerelease_number" -ge 1
-            test "$prerelease_number" -le 99
+            test "$prerelease_number" -le 999
           fi
           case "$inferred_channel" in
             alpha) qualifier_rank="$prerelease_number" ;;
-            beta) qualifier_rank=$((100 + prerelease_number)) ;;
-            stable) qualifier_rank=200 ;;
+            beta) qualifier_rank=$((1000 + prerelease_number)) ;;
+            stable) qualifier_rank=2000 ;;
           esac
           release_code=$((major * 10000000 + minor * 10000 + patch * 1000 + qualifier_rank))
           test "$release_code" -gt 0
