@@ -13,4 +13,13 @@ class ThorScreensContractTest {
         assertTrue(dataLine.contains("Modifier.weight(1f).padding(start = 12.dp)"))
         assertTrue(dataLine.contains("softWrap = true"))
     }
+
+    @Test
+    fun lowerRootPanelShowsGuardBackedReadinessReasons() {
+        val source = File("src/main/java/dev/adrian/thortools/screens/ThorScreens.kt").readText()
+        val rootPanel = source.substringAfter("private fun RootPanel").substringBefore("private fun AboutPanel")
+
+        assertTrue(rootPanel.contains("DashboardOperations(snapshot)"))
+        assertTrue(rootPanel.contains("ThorOperationGuard.validate(snapshot, operation)"))
+    }
 }

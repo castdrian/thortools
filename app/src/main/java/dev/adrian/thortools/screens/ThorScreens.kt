@@ -550,7 +550,6 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
     val rootReady = snapshot.profile.isThor && snapshot.rootServiceAvailable && snapshot.activeSlot in setOf("_a", "_b")
     fun operationReady(operation: ThorOperation): Boolean =
         actionReady && ThorOperationGuard.validate(snapshot, operation) == null
-    val backupReason = if (rootReady) ThorOperationGuard.validate(snapshot, ThorOperation.BACKUP) else null
     val commandModifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
     val backupLabel = if (snapshot.availableBootSlots.isEmpty()) {
         "Back up available slots"
@@ -564,6 +563,7 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
     ) {
         Text("EZ Root for AYN Thor", style = MaterialTheme.typography.headlineSmall)
         Text("ThorTools checks the active slot and partition layout again before each image operation. Backups are copied to the app folder and Download folder.")
+        DashboardOperations(snapshot)
         Button(enabled = operationReady(ThorOperation.INSTALL_MAGISK) && !snapshot.magiskInstalled, onClick = { session.run(operationScope, ThorOperation.INSTALL_MAGISK) }, modifier = commandModifier) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download or open Magisk") }
         Button(enabled = operationReady(ThorOperation.BACKUP) && !snapshot.stockBackupCoverageReady, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = commandModifier) { Text(backupLabel) }
         Button(enabled = operationReady(ThorOperation.PATCH) && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = commandModifier) { Text("Prepare root patch") }
@@ -574,7 +574,6 @@ private fun RootPanel(session: ThorSession, context: Context, operationScope: Co
         if (!thorReady) Text("This device is in diagnostics-only mode because it is not an AYN Thor.", color = MaterialTheme.colorScheme.error)
         if (thorReady && !rootReady) Text("This Thor is in diagnostics-only mode until the privileged service and active slot are available.", color = MaterialTheme.colorScheme.error)
         if (snapshot.operation.rebootRequired) Text("Reboot the Thor before starting another operation.", color = MaterialTheme.colorScheme.error)
-        backupReason?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
 
     pendingOperation?.let { operation ->
