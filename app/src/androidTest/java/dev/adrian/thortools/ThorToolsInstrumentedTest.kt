@@ -709,6 +709,50 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun keepsDeviceIdentityWhenTheInitialThorStateReadFails() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val expectedProperties = SystemUtils.getDeviceProperties()
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = error("initial state read failed")
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult =
+                OperationResult(false, "unexpected backend execution")
+        }
+        try {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+            val session = ThorSession(context, backend)
+            session.load()
+            assertFalse(session.snapshot.stateReadHealthy)
+            assertEquals(expectedProperties.model, session.snapshot.profile.properties.model)
+            assertEquals(expectedProperties.device, session.snapshot.profile.properties.device)
+            assertTrue(session.snapshot.profile.properties.model.isNotBlank())
+            assertTrue(session.snapshot.profile.capabilities.isEmpty())
+            assertEquals(OperationStatus.FAILURE, session.snapshot.operation.status)
+        } finally {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .remove(AppSettings.JOURNAL_REBOOT_REQUIRED_KEY)
+                .remove(AppSettings.JOURNAL_BOOT_MARKER_KEY)
+                .remove(AppSettings.PENDING_REBOOT_OPERATION_KEY)
+                .remove(AppSettings.PENDING_REBOOT_MESSAGE_KEY)
+                .remove(AppSettings.PENDING_REBOOT_STATUS_KEY)
+                .remove(AppSettings.PENDING_REBOOT_BOOT_MARKER_KEY)
+                .commit()
+        }
+    }
+
+    @Test
     fun failsClosedWhenThePostOperationStateReadCannotComplete() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val preferences = AppSettings.getSharedPrefs(context)

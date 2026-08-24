@@ -737,8 +737,14 @@ class ThorSession(
                 "Could not read current Thor state; refresh before changing the Thor."
             },
         )
+        val failureProfile = if (snapshot.profile.properties != DeviceProperties()) {
+            snapshot.profile
+        } else {
+            runCatching { DeviceProfile.detect(SystemUtils.getDeviceProperties()) }
+                .getOrDefault(snapshot.profile)
+        }
         return ThorSnapshot.loading(failedOperation).copy(
-            profile = snapshot.profile.copy(capabilities = emptySet()),
+            profile = failureProfile.copy(capabilities = emptySet()),
             stateReadHealthy = false,
         )
     }
