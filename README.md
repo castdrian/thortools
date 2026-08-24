@@ -11,6 +11,7 @@ The app enters diagnostics-only mode on other devices or when the Thor privilege
 ## Features
 
 - Thor hardware, firmware, battery, slot, root, Magisk, and partition diagnostics
+- Explicit dual-screen, upper-only, and lower-only display-state diagnostics during lid transitions
 - EZ Root backup, Magisk patch, active-slot flash, stock restore, and safe patched-image cache management
 - DPI and animation speed controls
 - Rooted volume-step control

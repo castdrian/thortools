@@ -30,6 +30,7 @@ class ThorDiagnosticsReportTest {
             displayDiagnostics = ThorDisplayDiagnostics(
                 upper = ThorDisplayPanel(0, 1920, 1080, 120f),
                 lower = ThorDisplayPanel(1, 1240, 1080, 60f),
+                defaultDisplayId = 0,
             ),
         )
         val report = ThorDiagnosticsReport.build(
@@ -63,6 +64,8 @@ class ThorDiagnosticsReportTest {
         assertTrue(report.contains("stateReadHealthy=true"))
         assertTrue(report.contains("display.upper.width=1920"))
         assertTrue(report.contains("display.lower.width=1240"))
+        assertTrue(report.contains("display.defaultDisplayId=0"))
+        assertTrue(report.contains("display.mode=DUAL"))
         assertTrue(report.contains("recovery[0].sha256=stock-hash"))
         assertTrue(report.contains("recoveryPath=/recovery"))
     }

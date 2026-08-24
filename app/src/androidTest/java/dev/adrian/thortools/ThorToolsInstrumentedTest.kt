@@ -131,6 +131,7 @@ class ThorToolsInstrumentedTest {
         assertTrue(snapshot.rootServiceAvailable)
         assertTrue(snapshot.backupDestinationWritable)
         assertTrue(snapshot.displayDiagnostics.dualDisplayReady)
+        assertEquals(ThorDisplayMode.DUAL, snapshot.displayDiagnostics.mode)
         assertEquals("1920 x 1080", snapshot.displayDiagnostics.upper.geometryLabel)
         assertEquals("1240 x 1080", snapshot.displayDiagnostics.lower.geometryLabel)
     }
@@ -150,6 +151,7 @@ class ThorToolsInstrumentedTest {
         assertEquals(lower.displayId, snapshot.displayDiagnostics.lower.displayId)
         assertEquals(upper.mode.refreshRate, snapshot.displayDiagnostics.upper.refreshRateHz, 0.01f)
         assertEquals(lower.mode.refreshRate, snapshot.displayDiagnostics.lower.refreshRateHz, 0.01f)
+        assertEquals(0, snapshot.displayDiagnostics.defaultDisplayId)
     }
 
     @Test

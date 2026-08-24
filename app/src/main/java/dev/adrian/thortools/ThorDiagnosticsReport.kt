@@ -58,6 +58,8 @@ object ThorDiagnosticsReport {
         appendProperty("operationMessage", snapshot.operation.message)
         appendDisplay("upper", snapshot.displayDiagnostics.upper)
         appendDisplay("lower", snapshot.displayDiagnostics.lower)
+        appendLine("display.defaultDisplayId=${snapshot.displayDiagnostics.defaultDisplayId}")
+        appendLine("display.mode=${snapshot.displayDiagnostics.mode.name}")
         appendLine("dualDisplayReady=${snapshot.displayDiagnostics.dualDisplayReady}")
         appendProperty("recoveryPath", recoveryPath)
         appendProperty("logPath", logPath)

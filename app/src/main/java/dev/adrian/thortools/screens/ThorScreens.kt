@@ -48,6 +48,7 @@ import dev.adrian.thortools.OperationStatus
 import dev.adrian.thortools.ThorCapability
 import dev.adrian.thortools.ThorDiagnosticsReport
 import dev.adrian.thortools.ThorDisplayDiagnostics
+import dev.adrian.thortools.ThorDisplayMode
 import dev.adrian.thortools.ThorDisplayPanel
 import dev.adrian.thortools.ThorOperation
 import dev.adrian.thortools.ThorOperationGuard
@@ -279,12 +280,8 @@ private fun DashboardDisplays(diagnostics: ThorDisplayDiagnostics) {
             DisplayLine("Upper panel", diagnostics.upper)
             DisplayLine("Lower panel", diagnostics.lower)
             Text(
-                text = if (diagnostics.dualDisplayReady) {
-                    "Dual-display workflow ready"
-                } else {
-                    "Single-display fallback active"
-                },
-                color = if (diagnostics.dualDisplayReady) Color(0xff2e7d32) else MaterialTheme.colorScheme.error,
+                text = diagnostics.mode.label,
+                color = if (diagnostics.mode == ThorDisplayMode.DUAL) Color(0xff2e7d32) else MaterialTheme.colorScheme.error,
             )
         }
     }

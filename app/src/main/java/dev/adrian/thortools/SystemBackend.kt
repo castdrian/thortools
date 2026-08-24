@@ -99,12 +99,28 @@ data class ThorDisplayPanel(
             2 -> "Upside down"
             3 -> "Rotated 270 deg"
             else -> "Unknown"
+    }
+}
+
+enum class ThorDisplayMode {
+    DUAL,
+    UPPER_ONLY,
+    LOWER_ONLY,
+    UNAVAILABLE;
+
+    val label: String
+        get() = when (this) {
+            DUAL -> "Dual-display workflow ready"
+            UPPER_ONLY -> "Upper display only"
+            LOWER_ONLY -> "Lower display only"
+            UNAVAILABLE -> "No Thor display detected"
         }
 }
 
 data class ThorDisplayDiagnostics(
     val upper: ThorDisplayPanel = ThorDisplayPanel(),
     val lower: ThorDisplayPanel = ThorDisplayPanel(),
+    val defaultDisplayId: Int = -1,
 ) {
     val dualDisplayReady: Boolean
         get() = upper.present &&
@@ -112,6 +128,16 @@ data class ThorDisplayDiagnostics(
             upper.displayId != lower.displayId &&
             DeviceProfile.isThorUpperDisplay(upper.widthPixels, upper.heightPixels, upper.rotation) &&
             DeviceProfile.isThorLowerDisplay(lower.widthPixels, lower.heightPixels, lower.rotation)
+
+    val mode: ThorDisplayMode
+        get() = when {
+            dualDisplayReady -> ThorDisplayMode.DUAL
+            lower.present && defaultDisplayId == lower.displayId -> ThorDisplayMode.LOWER_ONLY
+            upper.present && defaultDisplayId == upper.displayId -> ThorDisplayMode.UPPER_ONLY
+            upper.present -> ThorDisplayMode.UPPER_ONLY
+            lower.present -> ThorDisplayMode.LOWER_ONLY
+            else -> ThorDisplayMode.UNAVAILABLE
+        }
 }
 
 data class ThorSnapshot(
@@ -339,6 +365,7 @@ object ThorOperationGuard {
 internal fun readThorDisplayDiagnostics(context: Context): ThorDisplayDiagnostics {
     val displayManager = context.getSystemService(DisplayManager::class.java) ?: return ThorDisplayDiagnostics()
     val displays = runCatching { displayManager.displays.toList() }.getOrElse { return ThorDisplayDiagnostics() }
+    val defaultDisplayId = displays.firstOrNull { display -> display.displayId == Display.DEFAULT_DISPLAY }?.displayId ?: -1
     val upper = displays.firstOrNull { display ->
         display.displayId == Display.DEFAULT_DISPLAY && display.isThorUpperDisplay()
     } ?: displays.firstOrNull { display -> display.isThorUpperDisplay() }
@@ -346,6 +373,7 @@ internal fun readThorDisplayDiagnostics(context: Context): ThorDisplayDiagnostic
     return ThorDisplayDiagnostics(
         upper = upper?.toThorDisplayPanel() ?: ThorDisplayPanel(),
         lower = lower?.toThorDisplayPanel() ?: ThorDisplayPanel(),
+        defaultDisplayId = defaultDisplayId,
     )
 }
 

@@ -14,8 +14,8 @@ Record the complete property dump for at least these devices:
 ## Preflight
 
 - Confirm the bootloader is unlocked and the device can obtain the AYN privileged root service.
-- Record manufacturer, brand, model, device, product, board, hardware, SoC, firmware, build, serial, and active slot.
-- Record both display geometries, refresh rates, orientation, and touch behavior.
+- Record manufacturer, brand, model, device, product, system device, system name, build product, board, hardware, SoC, firmware, build, serial, and active slot.
+- Record both display geometries, refresh rates, orientation, default-display ownership, and touch behavior in dual-screen, upper-only, and lower-only states.
 - Confirm battery is at least 35% and the recovery folder is writable.
 - Confirm the app remains diagnostics-only on a non-Thor or when the privileged service is unavailable.
 
