@@ -68,6 +68,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         patchedBackupSlots = emptySet(),
         operation = OperationState(),
         moduleSyncState = AppSettings.getModuleSyncState(preferences),
+        bootOverrideState = AppSettings.getBootOverrideState(preferences),
         displayDiagnostics = readThorDisplayDiagnostics(context),
     )
 
@@ -134,6 +135,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                     return OperationResult(false, "DPI must be between ${AppSettings.DPI_MIN} and ${AppSettings.DPI_MAX}")
                 }
                 AppSettings.setDpi(preferences, value)
+                AppSettings.setBootOverrideState(preferences, ThorBootOverrideState.APPLIED)
                 state = state.copy(lcdDensity = AppSettings.getDpi(preferences, value))
             }
             ThorOperation.SET_ANIMATION -> {
@@ -143,6 +145,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                     return OperationResult(false, "Animation speed must be between 0x and 1x")
                 }
                 AppSettings.setAnimationSpeed(preferences, value)
+                AppSettings.setBootOverrideState(preferences, ThorBootOverrideState.APPLIED)
                 state = state.copy(animationSpeed = AppSettings.getAnimationSpeed(preferences, value))
             }
             ThorOperation.SET_VOLUME_STEPS -> {
@@ -218,6 +221,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
             volumeSteps = AppSettings.getVolumeSteps(preferences, 20),
             animationSpeed = AppSettings.getAnimationSpeed(preferences, 1f),
             moduleSyncState = AppSettings.getModuleSyncState(preferences),
+            bootOverrideState = AppSettings.getBootOverrideState(preferences),
             displayDiagnostics = readThorDisplayDiagnostics(context),
             backupAvailable = state.activeSlot in stockSlots,
             stockRestoreAvailable = state.activeSlot in stockSlots,

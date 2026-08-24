@@ -24,6 +24,10 @@ object ThorRecoveryGuidance {
             "ThorTools could not synchronize its Magisk module. Verify root access, then retry the module setting before rebooting."
         snapshot.moduleSyncState == ThorModuleSyncState.PENDING ->
             "ThorTools module synchronization is pending. Keep the Thor rooted and wait for the dashboard to report it synced."
+        snapshot.bootOverrideState == ThorBootOverrideState.FAILED ->
+            "ThorTools could not reapply its saved DPI or animation override after boot. Review the current values, then retry the setting."
+        snapshot.bootOverrideState == ThorBootOverrideState.PENDING ->
+            "ThorTools has a saved DPI or animation override that has not been confirmed after boot. Refresh after the privileged service is available."
         snapshot.activeSlot !in setOf("_a", "_b") ->
             "Recovery operations are blocked until the active Thor slot can be read."
         !snapshot.initBootAvailable && !snapshot.bootAvailable ->

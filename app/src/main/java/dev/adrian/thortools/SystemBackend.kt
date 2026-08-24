@@ -165,6 +165,7 @@ data class ThorSnapshot(
     val displayDiagnostics: ThorDisplayDiagnostics = ThorDisplayDiagnostics(),
     val stateReadHealthy: Boolean = true,
     val moduleSyncState: ThorModuleSyncState = ThorModuleSyncState.NOT_CONFIGURED,
+    val bootOverrideState: ThorBootOverrideState = ThorBootOverrideState.NOT_CONFIGURED,
 ) {
     val recoveryPartition: String
         get() = when {
@@ -215,6 +216,7 @@ data class ThorSnapshot(
             patchedCacheAvailable = false,
             availableBootSlots = emptySet(),
             operation = operation,
+            bootOverrideState = ThorBootOverrideState.NOT_CONFIGURED,
         )
     }
 }
@@ -467,6 +469,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             operation = operation,
             displayDiagnostics = readThorDisplayDiagnostics(context),
             moduleSyncState = moduleSyncState,
+            bootOverrideState = AppSettings.getBootOverrideState(prefs),
         )
     }
 
@@ -536,6 +539,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                 if (!changed) {
                     OperationResult(false, "The Thor DPI command failed")
                 } else if (AppSettings.setDpi(prefs, value)) {
+                    AppSettings.setBootOverrideState(prefs, ThorBootOverrideState.APPLIED)
                     OperationResult(true, "DPI set to $value")
                 } else {
                     val restored = previous == value || previous?.let { RootUtils.setDpi(context, it) } == true
@@ -566,6 +570,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                         },
                     )
                 } else if (AppSettings.setAnimationSpeed(prefs, value)) {
+                    AppSettings.setBootOverrideState(prefs, ThorBootOverrideState.APPLIED)
                     OperationResult(true, "Animation speed set to ${value}x")
                 } else {
                     val restored = RootUtils.setAnimationSpeed(context, previous)

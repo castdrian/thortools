@@ -173,8 +173,10 @@ class ThorToolsInstrumentedTest {
         try {
             assertTrue(backend.perform(ThorOperation.SET_DPI, "333").success)
             assertEquals(333, backend.snapshot().lcdDensity)
+            assertEquals(ThorBootOverrideState.APPLIED, backend.snapshot().bootOverrideState)
             assertTrue(backend.perform(ThorOperation.SET_ANIMATION, "0.5").success)
             assertEquals(0.5f, backend.snapshot().animationSpeed)
+            assertEquals(ThorBootOverrideState.APPLIED, backend.snapshot().bootOverrideState)
             val recreatedBackend = SystemBackendFactory.create(context)
             assertEquals(333, recreatedBackend.snapshot().lcdDensity)
             assertEquals(0.5f, recreatedBackend.snapshot().animationSpeed)

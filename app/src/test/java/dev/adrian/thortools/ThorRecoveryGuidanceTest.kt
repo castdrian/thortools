@@ -71,6 +71,18 @@ class ThorRecoveryGuidanceTest {
     }
 
     @Test
+    fun explainsBootOverrideSynchronizationStates() {
+        assertEquals(
+            "ThorTools could not reapply its saved DPI or animation override after boot. Review the current values, then retry the setting.",
+            ThorRecoveryGuidance.forSnapshot(snapshot().copy(bootOverrideState = ThorBootOverrideState.FAILED)),
+        )
+        assertEquals(
+            "ThorTools has a saved DPI or animation override that has not been confirmed after boot. Refresh after the privileged service is available.",
+            ThorRecoveryGuidance.forSnapshot(snapshot().copy(bootOverrideState = ThorBootOverrideState.PENDING)),
+        )
+    }
+
+    @Test
     fun explainsRuntimeBlockers() {
         assertEquals(
             "Thor system state could not be read. Refresh before changing the device.",

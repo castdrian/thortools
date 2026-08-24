@@ -37,6 +37,32 @@ enum class ThorModuleSyncState {
     }
 }
 
+enum class ThorBootOverrideState {
+    NOT_CONFIGURED,
+    PENDING,
+    APPLIED,
+    FAILED;
+
+    val label: String
+        get() = when (this) {
+            NOT_CONFIGURED -> "Not configured"
+            PENDING -> "Pending"
+            APPLIED -> "Applied"
+            FAILED -> "Failed"
+        }
+
+    companion object {
+        fun fromStored(value: String?, configured: Boolean): ThorBootOverrideState {
+            val stored = value?.let { runCatching { valueOf(it) }.getOrNull() }
+            return when {
+                !configured -> NOT_CONFIGURED
+                stored == null || stored == NOT_CONFIGURED -> PENDING
+                else -> stored
+            }
+        }
+    }
+}
+
 object AppSettings {
     const val ANIMATION_SPEED_DEFAULT = 1.0f
     const val DPI_MIN = 290
@@ -63,6 +89,7 @@ object AppSettings {
     const val RECOVERY_MANIFEST_KEY = "recoveryManifest"
     const val MAGISK_DOWNLOAD_ID_KEY = "magiskDownloadId"
     const val MODULE_SYNC_STATE_KEY = "moduleSyncState"
+    const val BOOT_OVERRIDE_STATE_KEY = "bootOverrideState"
 
     fun getSharedPrefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -110,9 +137,21 @@ object AppSettings {
     fun setModuleSyncState(sharedPrefs: SharedPreferences, state: ThorModuleSyncState): Boolean =
         sharedPrefs.edit().putString(MODULE_SYNC_STATE_KEY, state.name).commit()
 
+    fun getBootOverrideState(sharedPrefs: SharedPreferences): ThorBootOverrideState =
+        ThorBootOverrideState.fromStored(
+            runCatching { sharedPrefs.getString(BOOT_OVERRIDE_STATE_KEY, null) }.getOrNull(),
+            hasBootOverrideSettings(sharedPrefs),
+        )
+
+    fun setBootOverrideState(sharedPrefs: SharedPreferences, state: ThorBootOverrideState): Boolean =
+        sharedPrefs.edit().putString(BOOT_OVERRIDE_STATE_KEY, state.name).commit()
+
     fun hasDpiOverride(sharedPrefs: SharedPreferences): Boolean = sharedPrefs.contains(DPI_KEY)
 
     fun hasAnimationSpeedOverride(sharedPrefs: SharedPreferences): Boolean = sharedPrefs.contains(ANIMATIONS_SPEED_KEY)
+
+    fun hasBootOverrideSettings(sharedPrefs: SharedPreferences): Boolean =
+        hasDpiOverride(sharedPrefs) || hasAnimationSpeedOverride(sharedPrefs)
 
     fun hasVolumeStepsOverride(sharedPrefs: SharedPreferences): Boolean = sharedPrefs.contains(VOLUME_STEPS_KEY)
 

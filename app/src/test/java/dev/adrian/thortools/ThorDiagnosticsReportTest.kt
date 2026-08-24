@@ -27,6 +27,7 @@ class ThorDiagnosticsReportTest {
                 ),
             ),
             activeSlot = "_b",
+            bootOverrideState = ThorBootOverrideState.FAILED,
             displayDiagnostics = ThorDisplayDiagnostics(
                 upper = ThorDisplayPanel(0, 1920, 1080, 120f),
                 lower = ThorDisplayPanel(1, 1240, 1080, 60f),
@@ -61,6 +62,7 @@ class ThorDiagnosticsReportTest {
         assertTrue(report.contains("operationStatus=FAILURE"))
         assertTrue(report.contains("operationRebootRequired=true"))
         assertTrue(report.contains("moduleSyncState=NOT_CONFIGURED"))
+        assertTrue(report.contains("bootOverrideState=FAILED"))
         assertTrue(report.contains("stateReadHealthy=true"))
         assertTrue(report.contains("display.upper.width=1920"))
         assertTrue(report.contains("display.lower.width=1240"))

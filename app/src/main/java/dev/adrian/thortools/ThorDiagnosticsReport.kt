@@ -42,6 +42,7 @@ object ThorDiagnosticsReport {
         appendLine("rooted=${snapshot.rooted}")
         appendLine("magiskInstalled=${snapshot.magiskInstalled}")
         appendLine("moduleSyncState=${snapshot.moduleSyncState.name}")
+        appendLine("bootOverrideState=${snapshot.bootOverrideState.name}")
         appendLine("initBootAvailable=${snapshot.initBootAvailable}")
         appendLine("bootAvailable=${snapshot.bootAvailable}")
         appendLine("backupDestinationWritable=${snapshot.backupDestinationWritable}")

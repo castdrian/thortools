@@ -55,10 +55,69 @@ class BootReceiverTest {
     }
 
     @Test
+    fun appliesEveryConfiguredOverrideAndReportsSuccess() {
+        val dpiValues = mutableListOf<Int>()
+        val animationValues = mutableListOf<Float>()
+
+        assertTrue(
+            applyBootOverrides(
+                hasDpiOverride = true,
+                dpi = 333,
+                hasAnimationSpeedOverride = true,
+                animationSpeed = 0.5f,
+                setDpi = { dpiValues += it; true },
+                setAnimationSpeed = { animationValues += it; true },
+            ),
+        )
+        assertEquals(listOf(333), dpiValues)
+        assertEquals(listOf(0.5f), animationValues)
+    }
+
+    @Test
+    fun reportsFailureForInvalidOrRejectedOverridesWithoutSkippingTheOtherOne() {
+        val animationValues = mutableListOf<Float>()
+
+        assertFalse(
+            applyBootOverrides(
+                hasDpiOverride = true,
+                dpi = AppSettings.DPI_MIN - 1,
+                hasAnimationSpeedOverride = true,
+                animationSpeed = 0.5f,
+                setDpi = { error("invalid DPI must not be applied") },
+                setAnimationSpeed = { animationValues += it; false },
+            ),
+        )
+        assertEquals(listOf(0.5f), animationValues)
+    }
+
+    @Test
+    fun treatsUnconfiguredOverridesAsAlreadyApplied() {
+        assertTrue(
+            applyBootOverrides(
+                hasDpiOverride = false,
+                dpi = 0,
+                hasAnimationSpeedOverride = false,
+                animationSpeed = Float.NaN,
+                setDpi = { error("DPI must not be applied") },
+                setAnimationSpeed = { error("animation must not be applied") },
+            ),
+        )
+    }
+
+    @Test
+    fun configuredBootOverrideStateDefaultsToPending() {
+        assertEquals(ThorBootOverrideState.PENDING, ThorBootOverrideState.fromStored(null, configured = true))
+        assertEquals(ThorBootOverrideState.NOT_CONFIGURED, ThorBootOverrideState.fromStored("FAILED", configured = false))
+        assertEquals(ThorBootOverrideState.APPLIED, ThorBootOverrideState.fromStored("APPLIED", configured = true))
+    }
+
+    @Test
     fun retainsModuleSynchronizationFailureAfterBootRetry() {
         val source = File("src/main/java/dev/adrian/thortools/BootReceiver.kt").readText()
         assertTrue(source.contains("AppSettings.setModuleSyncState(prefs, ThorModuleSyncState.FAILED)"))
         assertTrue(source.contains("if (AppSettings.hasModuleSettings(prefs))"))
         assertTrue(source.contains("AppSettings.save(context)"))
+        assertTrue(source.contains("AppSettings.setBootOverrideState(prefs, ThorBootOverrideState.FAILED)"))
+        assertTrue(source.contains("applyBootOverrides("))
     }
 }

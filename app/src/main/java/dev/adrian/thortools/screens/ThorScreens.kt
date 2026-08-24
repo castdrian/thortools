@@ -234,6 +234,7 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
             DataLine("Root state", if (snapshot.rooted) "Rooted" else "Not rooted")
             DataLine("Magisk", if (snapshot.magiskInstalled) "Installed" else "Not installed")
             DataLine("Magisk module sync", snapshot.moduleSyncState.label)
+            DataLine("Boot override sync", snapshot.bootOverrideState.label)
             DataLine("Recovery target", snapshot.recoveryPartition)
             DataLine(
                 "Stock backups",
