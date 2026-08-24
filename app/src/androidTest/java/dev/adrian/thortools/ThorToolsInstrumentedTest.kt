@@ -381,6 +381,60 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun recoveryManifestStatusRejectsAChangedPatchedSource() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val directory = context.getExternalFilesDir(null)
+            ?: error("Thor recovery directory is unavailable")
+        val suffix = System.currentTimeMillis()
+        val stock = File(directory, "status-source-stock-$suffix.img")
+        val patched = File(directory, "status-source-patched-$suffix.img")
+        preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+        try {
+            stock.writeText("stock")
+            patched.writeText("patched")
+            val stockHash = RecoveryManifestStore.hashFile(stock.path) ?: error("stock hash missing")
+            assertTrue(
+                RecoveryManifestStore.recordLocalImages(
+                    context,
+                    listOf(
+                        RecoveryImageInput(
+                            fileName = stock.name,
+                            slot = "_a",
+                            partition = "boot",
+                            patched = false,
+                            path = stock.path,
+                            buildIdentity = "status-build",
+                        ),
+                        RecoveryImageInput(
+                            fileName = patched.name,
+                            slot = "_a",
+                            partition = "boot",
+                            patched = true,
+                            path = patched.path,
+                            buildIdentity = "status-build",
+                            sourceSha256 = stockHash,
+                        ),
+                    ),
+                ),
+            )
+            var status = RecoveryManifestStore.statuses(context, "status-build")
+                .single { it.record.patched }
+            assertTrue(status.sourceStockVerified)
+            assertTrue(status.patchedImageReady)
+            stock.writeText("changed")
+            status = RecoveryManifestStore.statuses(context, "status-build")
+                .single { it.record.patched }
+            assertFalse(status.sourceStockVerified)
+            assertFalse(status.patchedImageReady)
+        } finally {
+            preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+            stock.delete()
+            patched.delete()
+        }
+    }
+
+    @Test
     fun thorAvdExposesLowerDisplayGeometry() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val displayManager = context.getSystemService(DisplayManager::class.java)

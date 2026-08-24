@@ -1,6 +1,7 @@
 package dev.adrian.thortools
 
 import dev.adrian.thortools.utils.RecoveryImageRecord
+import dev.adrian.thortools.utils.RecoveryImageStatus
 import dev.adrian.thortools.utils.RecoveryManifestStore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -59,5 +60,56 @@ class RecoveryManifestTest {
         )
 
         assertEquals(null, selected)
+    }
+
+    @Test
+    fun distinguishesRestoreAvailabilityFromCompleteStockRedundancy() {
+        val status = RecoveryImageStatus(
+            record = record,
+            localPath = "/recovery/boot_a.img",
+            downloadPath = "/sdcard/Download/boot_a.img",
+            localCopyVerified = false,
+            downloadCopyVerified = true,
+            currentBuild = true,
+        )
+
+        assertTrue(status.stockRestoreSourceAvailable)
+        assertFalse(status.stockBackupPairComplete)
+        assertFalse(status.patchedImageReady)
+    }
+
+    @Test
+    fun requiresTheAppCopyForPatchedImageReadiness() {
+        val status = RecoveryImageStatus(
+            record = record.copy(patched = true, sourceSha256 = "stock-hash"),
+            localPath = "/recovery/boot_patched_a.img",
+            downloadPath = "/sdcard/Download/boot_patched_a.img",
+            localCopyVerified = false,
+            downloadCopyVerified = true,
+            currentBuild = true,
+        )
+
+        assertFalse(status.stockRestoreSourceAvailable)
+        assertFalse(status.stockBackupPairComplete)
+        assertFalse(status.patchedImageReady)
+        assertTrue(
+            status.copy(localCopyVerified = true).patchedImageReady,
+        )
+    }
+
+    @Test
+    fun requiresTheRecordedStockSourceForPatchedImageReadiness() {
+        val status = RecoveryImageStatus(
+            record = record.copy(patched = true, sourceSha256 = "stock-hash"),
+            localPath = "/recovery/boot_patched_a.img",
+            downloadPath = "/sdcard/Download/boot_patched_a.img",
+            localCopyVerified = true,
+            downloadCopyVerified = false,
+            currentBuild = true,
+            sourceStockVerified = false,
+        )
+
+        assertFalse(status.patchedImageReady)
+        assertTrue(status.copy(sourceStockVerified = true).patchedImageReady)
     }
 }

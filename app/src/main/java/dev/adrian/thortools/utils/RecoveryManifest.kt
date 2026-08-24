@@ -50,7 +50,17 @@ data class RecoveryImageStatus(
     val localCopyVerified: Boolean,
     val downloadCopyVerified: Boolean,
     val currentBuild: Boolean,
-)
+    val sourceStockVerified: Boolean = true,
+) {
+    val stockRestoreSourceAvailable: Boolean
+        get() = currentBuild && !record.patched && (localCopyVerified || downloadCopyVerified)
+
+    val stockBackupPairComplete: Boolean
+        get() = currentBuild && !record.patched && localCopyVerified && downloadCopyVerified
+
+    val patchedImageReady: Boolean
+        get() = currentBuild && record.patched && localCopyVerified && sourceStockVerified
+}
 
 data class VerifiedRecoverySource(
     val path: String,
@@ -216,17 +226,40 @@ object RecoveryManifestStore {
 
     fun records(context: Context): List<RecoveryImageRecord> = read(context)
 
-    fun statuses(context: Context, buildIdentity: String): List<RecoveryImageStatus> = records(context).map { record ->
-        val fileName = File(record.fileName).name
-        val localPath = FileUtils.getPathBackup(context, "/$fileName")
-        RecoveryImageStatus(
-            record = record,
-            localPath = localPath,
-            downloadPath = FileUtils.getPathDownload("/$fileName"),
-            localCopyVerified = verifyPath(context, record, localPath),
-            downloadCopyVerified = verifyPath(context, record, FileUtils.getPathDownload("/$fileName")),
-            currentBuild = record.buildIdentity == buildIdentity,
-        )
+    fun statuses(context: Context, buildIdentity: String): List<RecoveryImageStatus> {
+        val records = records(context)
+        return records.map { record ->
+            val fileName = File(record.fileName).name
+            val localPath = FileUtils.getPathBackup(context, "/$fileName")
+            val sourceStockVerified = if (!record.patched) {
+                true
+            } else {
+                val stockRecord = selectRecord(
+                    records = records,
+                    slot = record.slot,
+                    partition = record.partition,
+                    patched = false,
+                    buildIdentity = record.buildIdentity,
+                )
+                stockRecord != null &&
+                    record.sourceSha256.isNotBlank() &&
+                    record.sourceSha256 == stockRecord.sha256 &&
+                    verifyPath(
+                        context,
+                        stockRecord,
+                        FileUtils.getPathBackup(context, "/${File(stockRecord.fileName).name}"),
+                    )
+            }
+            RecoveryImageStatus(
+                record = record,
+                localPath = localPath,
+                downloadPath = FileUtils.getPathDownload("/$fileName"),
+                localCopyVerified = verifyPath(context, record, localPath),
+                downloadCopyVerified = verifyPath(context, record, FileUtils.getPathDownload("/$fileName")),
+                currentBuild = record.buildIdentity == buildIdentity,
+                sourceStockVerified = sourceStockVerified,
+            )
+        }
     }
 
     private fun find(

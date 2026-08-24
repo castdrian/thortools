@@ -390,17 +390,20 @@ private fun DashboardHashes(context: Context, snapshot: ThorSnapshot) {
                 Text(
                     when {
                         !status.currentBuild -> "Status: recorded for another build"
-                        !status.localCopyVerified -> "Status: app copy missing or modified"
-                        !record.patched && !status.downloadCopyVerified -> "Status: Download stock copy missing or modified"
+                        record.patched && !status.localCopyVerified -> "Status: app patched copy missing or modified"
+                        !record.patched && !status.localCopyVerified && status.downloadCopyVerified -> "Status: Download stock copy verified; app copy missing"
+                        !record.patched && status.localCopyVerified && !status.downloadCopyVerified -> "Status: app stock copy verified; Download copy missing"
+                        !record.patched && !status.localCopyVerified -> "Status: app and Download stock copies missing or modified"
+                        record.patched && !status.sourceStockVerified -> "Status: patched copy verified; matching stock source missing or modified"
                         record.patched && !status.downloadCopyVerified -> "Status: app copy verified; Download patch copy optional"
                         else -> "Status: app and Download copies verified for the current build"
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (
-                        status.currentBuild &&
-                        status.localCopyVerified &&
-                        (record.patched || status.downloadCopyVerified)
-                    ) Color(0xff2e7d32) else MaterialTheme.colorScheme.error,
+                    color = when {
+                        status.stockBackupPairComplete || status.patchedImageReady -> Color(0xff2e7d32)
+                        status.stockRestoreSourceAvailable -> Color(0xffa15c00)
+                        else -> MaterialTheme.colorScheme.error
+                    },
                 )
                 Text("App path: ${status.localPath}", style = MaterialTheme.typography.bodySmall)
                 Text("Download path: ${status.downloadPath}", style = MaterialTheme.typography.bodySmall)
