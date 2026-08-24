@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.Settings
+import androidx.core.content.FileProvider
 import dev.adrian.thortools.AppSettings
 import java.io.File
 
@@ -133,10 +134,17 @@ object MagiskUtil {
             }
             return MagiskActionResult(false, "Allow ThorTools to install Magisk in Android settings, then tap again")
         }
+        val stagedApk = stageDownloadedApk(context, uri) ?: run {
+            clearTrackedDownload(context)
+            return MagiskActionResult(false, "The downloaded file is not a valid Magisk APK; start the download again")
+        }
+        val stagedUri = runCatching {
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", stagedApk)
+        }.getOrNull() ?: return MagiskActionResult(false, "ThorTools could not prepare the Magisk installer")
         return if (runCatching {
             context.startActivity(
                 Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, "application/vnd.android.package-archive")
+                    setDataAndType(stagedUri, "application/vnd.android.package-archive")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                 },
             )
@@ -147,6 +155,29 @@ object MagiskUtil {
             MagiskActionResult(false, "The completed Magisk download could not be opened; start it again")
         }
     }
+
+    private fun stageDownloadedApk(context: Context, sourceUri: Uri): File? {
+        val stagedApk = File(context.cacheDir, MAGISK_DOWNLOAD_FILE_NAME)
+        val copied = runCatching {
+            context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                FileUtils.copyInputStream(input, stagedApk.absolutePath)
+            } ?: false
+        }.getOrDefault(false)
+        if (!copied) {
+            stagedApk.delete()
+            return null
+        }
+        val packageName = runCatching {
+            context.packageManager.getPackageArchiveInfo(stagedApk.absolutePath, 0)?.packageName
+        }.getOrNull()
+        if (!isExpectedMagiskPackage(packageName)) {
+            stagedApk.delete()
+            return null
+        }
+        return stagedApk
+    }
+
+    internal fun isExpectedMagiskPackage(packageName: String?): Boolean = packageName == MAGISK_PACKAGE_NAME
 
     fun getMagiskPath(context: Context): String {
         if (hasRootMagiskUtils(context)) return MAGISK_DIR

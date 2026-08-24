@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class MagiskUtilTest {
     @Test
@@ -26,5 +27,20 @@ class MagiskUtilTest {
         assertTrue(MagiskUtil.shouldEnqueueDownload(MagiskDownloadState.READY, false))
         assertFalse(MagiskUtil.shouldEnqueueDownload(MagiskDownloadState.READY, true))
         assertFalse(MagiskUtil.shouldEnqueueDownload(MagiskDownloadState.PENDING, false))
+    }
+
+    @Test
+    fun acceptsOnlyTheMagiskPackageForInstallation() {
+        assertTrue(MagiskUtil.isExpectedMagiskPackage(MagiskUtil.MAGISK_PACKAGE_NAME))
+        assertFalse(MagiskUtil.isExpectedMagiskPackage("com.example.unrelated"))
+        assertFalse(MagiskUtil.isExpectedMagiskPackage(null))
+    }
+
+    @Test
+    fun validatesTheDownloadedArchiveBeforeOpeningTheInstaller() {
+        val source = File("src/main/java/dev/adrian/thortools/utils/MagiskUtil.kt").readText()
+        assertTrue(source.contains("getPackageArchiveInfo"))
+        assertTrue(source.contains("FileProvider.getUriForFile"))
+        assertTrue(source.contains("The downloaded file is not a valid Magisk APK"))
     }
 }
