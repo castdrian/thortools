@@ -22,6 +22,8 @@ Each recovery record is bound to its slot, partition, build fingerprint, file si
 
 Flashing is blocked unless a stock active-slot restore source is still available. After a flash, restore, Magisk-module change, or explicit reboot request, ThorTools persists a reboot-required lock and only allows refresh or reboot until the device reports a new boot. The explicit reboot action is itself locked after the command is accepted so a second operation cannot race the restart. If a flash or restore script starts but does not complete, the same lock prevents a second write until the Thor has been rebooted. The patched-cache cleanup action only changes app-local files, including stale or cross-build patched files, and remains available even when the privileged root service is temporarily unavailable.
 
+ThorTools reads the Thor bootloader lock, AVB device state, and verified-boot state before any partition write. Flash and restore remain disabled when those readings are locked, missing, or contradictory; refresh after unlocking before retrying.
+
 The lower-screen **Clear patched cache** action removes only Magisk-patched images. Stock backups remain available for restoration, and the restore flow can use the independent `Download` copy if the app-local stock image is unavailable.
 
 While a display, module, cache, or Magisk download operation is running, the lower screen offers **Cancel**. ThorTools records the cancellation as interrupted and requires acknowledgement plus a fresh state review before retrying. Backup, patch, flash, restore, and reboot operations never expose cancellation once started.

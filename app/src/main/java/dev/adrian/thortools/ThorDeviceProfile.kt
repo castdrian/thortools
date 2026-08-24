@@ -12,6 +12,7 @@ enum class ThorCapability {
     ROOT_SERVICE,
     ROOTED,
     MAGISK,
+    BOOTLOADER_UNLOCKED,
     ACTIVE_SLOT,
     INIT_BOOT_PARTITION,
     BOOT_PARTITION,
@@ -40,6 +41,9 @@ data class DeviceProperties(
     val buildFingerprint: String = "",
     val serial: String = "",
     val slot: String = "",
+    val flashLocked: String = "",
+    val bootloaderDeviceState: String = "",
+    val verifiedBootState: String = "",
 ) {
     val buildIdentity: String
         get() = buildFingerprint.ifBlank {
@@ -47,6 +51,30 @@ data class DeviceProperties(
                 .filter(String::isNotBlank)
                 .joinToString("|")
         }
+
+    val bootloaderUnlocked: Boolean?
+        get() {
+            val rawValues = listOf(flashLocked, bootloaderDeviceState, verifiedBootState)
+                .map(String::trim)
+                .filter(String::isNotBlank)
+            if (rawValues.isEmpty()) return null
+            val parsedValues = rawValues.map(::parseBootloaderValue)
+            if (parsedValues.any { it == null }) return null
+            return parsedValues.mapNotNull { it }.distinct().singleOrNull()
+        }
+
+    val bootloaderStateLabel: String
+        get() = when (bootloaderUnlocked) {
+            true -> "Unlocked"
+            false -> "Locked"
+            null -> "Unknown"
+        }
+
+    private fun parseBootloaderValue(value: String): Boolean? = when (value.lowercase()) {
+        "0", "false", "no", "unlocked", "orange" -> true
+        "1", "true", "yes", "locked", "green", "yellow", "red" -> false
+        else -> null
+    }
 }
 
 data class ThorDeviceProfile(

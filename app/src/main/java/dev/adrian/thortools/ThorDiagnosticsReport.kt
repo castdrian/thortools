@@ -31,6 +31,10 @@ object ThorDiagnosticsReport {
         appendProperty("buildDate", snapshot.profile.properties.buildDate)
         appendProperty("buildFingerprint", snapshot.profile.properties.buildFingerprint)
         appendProperty("serial", snapshot.profile.properties.serial)
+        appendProperty("flashLocked", snapshot.profile.properties.flashLocked)
+        appendProperty("bootloaderDeviceState", snapshot.profile.properties.bootloaderDeviceState)
+        appendProperty("verifiedBootState", snapshot.profile.properties.verifiedBootState)
+        appendLine("bootloaderUnlocked=${snapshot.profile.properties.bootloaderUnlocked}")
         appendProperty("activeSlot", snapshot.activeSlot)
         appendProperty("availableBootSlots", snapshot.availableBootSlots.sorted().joinToString(","))
         appendProperty(

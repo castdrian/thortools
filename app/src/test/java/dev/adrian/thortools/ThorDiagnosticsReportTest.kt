@@ -24,6 +24,9 @@ class ThorDiagnosticsReportTest {
                     buildProduct = "odin2thor",
                     serial = "thor-serial",
                     buildFingerprint = "ayn/thor/pro",
+                    flashLocked = "0",
+                    bootloaderDeviceState = "unlocked",
+                    verifiedBootState = "orange",
                 ),
             ),
             activeSlot = "_b",
@@ -61,6 +64,10 @@ class ThorDiagnosticsReportTest {
         assertTrue(report.contains("systemName=Thor"))
         assertTrue(report.contains("buildProduct=odin2thor"))
         assertTrue(report.contains("serial=thor-serial"))
+        assertTrue(report.contains("flashLocked=0"))
+        assertTrue(report.contains("bootloaderDeviceState=unlocked"))
+        assertTrue(report.contains("verifiedBootState=orange"))
+        assertTrue(report.contains("bootloaderUnlocked=true"))
         assertTrue(report.contains("activeSlot=_b"))
         assertTrue(report.contains("availablePartitionsBySlot=_a:boot+init_boot,_b:boot"))
         assertTrue(report.contains("operation=FLASH"))

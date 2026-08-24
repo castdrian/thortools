@@ -256,6 +256,61 @@ class ThorOperationGuardTest {
     }
 
     @Test
+    fun blocksPartitionWritesWhenTheBootloaderIsLocked() {
+        val locked = snapshot(
+            backupAvailable = true,
+            stockRestoreAvailable = true,
+            patchedBackupAvailable = true,
+            flashLocked = "1",
+            bootloaderDeviceState = "locked",
+            verifiedBootState = "green",
+        )
+        assertEquals(
+            "Unlock the Thor bootloader before flashing or restoring",
+            ThorOperationGuard.validate(locked, ThorOperation.FLASH),
+        )
+        assertEquals(
+            "Unlock the Thor bootloader before flashing or restoring",
+            ThorOperationGuard.validate(locked, ThorOperation.RESTORE),
+        )
+    }
+
+    @Test
+    fun blocksPartitionWritesWhenTheBootloaderStateIsUnknown() {
+        val unknown = snapshot(
+            backupAvailable = true,
+            stockRestoreAvailable = true,
+            patchedBackupAvailable = true,
+            flashLocked = "",
+            bootloaderDeviceState = "",
+            verifiedBootState = "",
+        )
+        assertEquals(
+            "Thor bootloader lock state is unavailable; refresh before flashing or restoring",
+            ThorOperationGuard.validate(unknown, ThorOperation.FLASH),
+        )
+        assertEquals(
+            "Thor bootloader lock state is unavailable; refresh before flashing or restoring",
+            ThorOperationGuard.validate(unknown, ThorOperation.RESTORE),
+        )
+    }
+
+    @Test
+    fun allowsPatchPreparationWithoutAReadOfBootloaderState() {
+        assertNull(
+            ThorOperationGuard.validate(
+                snapshot(
+                    backupAvailable = true,
+                    flashLocked = "",
+                    bootloaderDeviceState = "",
+                    verifiedBootState = "",
+                ),
+                ThorOperation.PATCH,
+            ),
+        )
+    }
+
+    @Test
     fun reportsInitBootAsTheRecoveryTargetWhenBothPartitionsExist() {
         assertEquals("init_boot", snapshot().recoveryPartition)
         assertEquals("boot", snapshot(initBootAvailable = false).recoveryPartition)
@@ -301,14 +356,26 @@ class ThorOperationGuardTest {
         availableBootSlots: Set<String> = setOf("_a", "_b"),
         stockBackupSlots: Set<String> = if (backupAvailable) availableBootSlots else emptySet(),
         stockRecoverySlots: Set<String> = emptySet(),
+        flashLocked: String = "0",
+        bootloaderDeviceState: String = "unlocked",
+        verifiedBootState: String = "orange",
     ): ThorSnapshot {
+        val properties = DeviceProperties(
+            model = "AYN Thor",
+            buildFingerprint = "test-build",
+            flashLocked = flashLocked,
+            bootloaderDeviceState = bootloaderDeviceState,
+            verifiedBootState = verifiedBootState,
+        )
+        val profile = DeviceProfile.detect(properties).copy(
+            capabilities = buildSet {
+                add(ThorCapability.SUPPORT_FILES)
+                if (batteryAvailable) add(ThorCapability.BATTERY_STATE)
+                if (properties.bootloaderUnlocked == true) add(ThorCapability.BOOTLOADER_UNLOCKED)
+            },
+        )
         return ThorSnapshot(
-            profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor", buildFingerprint = "test-build")).copy(
-                capabilities = buildSet {
-                    add(ThorCapability.SUPPORT_FILES)
-                    if (batteryAvailable) add(ThorCapability.BATTERY_STATE)
-                },
-            ),
+            profile = profile,
             batteryPercent = batteryPercent,
             lcdDensity = 320,
             volumeSteps = 15,

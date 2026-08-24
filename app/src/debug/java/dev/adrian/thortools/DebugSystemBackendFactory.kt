@@ -35,11 +35,15 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                 buildFingerprint = "AYN/Thor/ThorTools:13/THOR_DEBUG/10001:userdebug/test-keys",
                 serial = "thor-avd",
                 slot = "_a",
+                flashLocked = "0",
+                bootloaderDeviceState = "unlocked",
+                verifiedBootState = "orange",
             ),
         ).copy(
             capabilities = setOf(
                 ThorCapability.ROOT_SERVICE,
                 ThorCapability.MAGISK,
+                ThorCapability.BOOTLOADER_UNLOCKED,
                 ThorCapability.ACTIVE_SLOT,
                 ThorCapability.INIT_BOOT_PARTITION,
                 ThorCapability.BOOT_PARTITION,

@@ -54,6 +54,9 @@ object SystemUtils {
             buildFingerprint = firstValue("ro.build.fingerprint", "ro.vendor.build.fingerprint", "ro.odm.build.fingerprint"),
             serial = firstValue("ro.serialno", "ro.boot.serialno"),
             slot = slot,
+            flashLocked = firstValue("ro.boot.flash.locked"),
+            bootloaderDeviceState = firstValue("ro.boot.vbmeta.device_state"),
+            verifiedBootState = firstValue("ro.boot.verifiedbootstate"),
         )
     }
 

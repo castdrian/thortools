@@ -203,6 +203,7 @@ data class ThorSnapshot(
             "Root service" to supportsThorCapability(ThorCapability.ROOT_SERVICE),
             "Root access" to supportsThorCapability(ThorCapability.ROOTED),
             "Magisk" to supportsThorCapability(ThorCapability.MAGISK),
+            "Bootloader unlocked" to supportsThorCapability(ThorCapability.BOOTLOADER_UNLOCKED),
             "Active slot" to supportsThorCapability(ThorCapability.ACTIVE_SLOT),
             "init_boot partition" to supportsThorCapability(ThorCapability.INIT_BOOT_PARTITION),
             "boot partition" to supportsThorCapability(ThorCapability.BOOT_PARTITION),
@@ -366,6 +367,13 @@ object ThorOperationGuard {
         if (operation in imageOperations && !snapshot.backupDestinationWritable) {
             return "The Thor backup destination is not writable"
         }
+        if (operation == ThorOperation.FLASH || operation == ThorOperation.RESTORE) {
+            when (snapshot.profile.properties.bootloaderUnlocked) {
+                true -> Unit
+                false -> return "Unlock the Thor bootloader before flashing or restoring"
+                null -> return "Thor bootloader lock state is unavailable; refresh before flashing or restoring"
+            }
+        }
         when (operation) {
             ThorOperation.BACKUP -> {
                 if (snapshot.rooted) return "Capture stock backups before root is active"
@@ -469,6 +477,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             if (rootService) add(ThorCapability.ROOT_SERVICE)
             if (rooted) add(ThorCapability.ROOTED)
             if (magisk) add(ThorCapability.MAGISK)
+            if (properties.bootloaderUnlocked == true) add(ThorCapability.BOOTLOADER_UNLOCKED)
             if (properties.slot == "_a" || properties.slot == "_b") add(ThorCapability.ACTIVE_SLOT)
             if (initBoot) add(ThorCapability.INIT_BOOT_PARTITION)
             if (boot) add(ThorCapability.BOOT_PARTITION)

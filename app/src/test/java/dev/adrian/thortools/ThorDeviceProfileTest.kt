@@ -3,6 +3,7 @@ package dev.adrian.thortools
 import dev.adrian.thortools.utils.SystemUtils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -132,6 +133,9 @@ class ThorDeviceProfileTest {
             "ro.vendor.build.fingerprint" to "ayn/thor:14/THOR/2:user/release-keys",
             "ro.boot.serialno" to "thor-lite-serial",
             "ro.boot.slot" to "b",
+            "ro.boot.flash.locked" to "0",
+            "ro.boot.vbmeta.device_state" to "unlocked",
+            "ro.boot.verifiedbootstate" to "orange",
         )
         val properties = SystemUtils.getDeviceProperties { values[it].orEmpty() }
 
@@ -145,8 +149,26 @@ class ThorDeviceProfileTest {
         assertEquals("ayn/thor:14/THOR/2:user/release-keys", properties.buildFingerprint)
         assertEquals("thor-lite-serial", properties.serial)
         assertEquals("_b", properties.slot)
+        assertEquals("0", properties.flashLocked)
+        assertEquals("unlocked", properties.bootloaderDeviceState)
+        assertEquals("orange", properties.verifiedBootState)
+        assertTrue(properties.bootloaderUnlocked == true)
         assertTrue(DeviceProfile.detect(properties).isThor)
         assertEquals(ThorVariant.LITE, DeviceProfile.detect(properties).variant)
+    }
+
+    @Test
+    fun classifiesBootloaderStateFromAndroidBootProperties() {
+        assertTrue(DeviceProperties(flashLocked = "0").bootloaderUnlocked == true)
+        assertTrue(DeviceProperties(bootloaderDeviceState = "UNLOCKED").bootloaderUnlocked == true)
+        assertTrue(DeviceProperties(verifiedBootState = "orange").bootloaderUnlocked == true)
+        assertFalse(DeviceProperties(flashLocked = "1").bootloaderUnlocked == true)
+        assertFalse(DeviceProperties(bootloaderDeviceState = "locked").bootloaderUnlocked == true)
+        assertFalse(DeviceProperties(verifiedBootState = "green").bootloaderUnlocked == true)
+        assertNull(DeviceProperties().bootloaderUnlocked)
+        assertNull(DeviceProperties(flashLocked = "0", verifiedBootState = "green").bootloaderUnlocked)
+        assertEquals("Unknown", DeviceProperties().bootloaderStateLabel)
+        assertEquals("Locked", DeviceProperties(verifiedBootState = "yellow").bootloaderStateLabel)
     }
 
     @Test
