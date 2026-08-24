@@ -154,6 +154,14 @@ class RecoveryScriptContractTest {
     }
 
     @Test
+    fun rootStateUsesTheLiveServiceInsteadOfAStaleBinaryHeuristic() {
+        val source = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
+        assertTrue(source.contains("val heuristicRooted = isDeviceRooted"))
+        assertTrue(source.contains("return resolveRootState(rootServiceAvailable, activeRoot == \"1\", heuristicRooted)"))
+        assertTrue(source.contains("internal fun resolveRootState("))
+    }
+
+    @Test
     fun backupCombinesInitBootAndBootResultsInOneLog() {
         val source = File("src/main/java/dev/adrian/thortools/utils/PatchUtils.kt").readText()
         assertTrue(source.contains("var clearLog = true"))

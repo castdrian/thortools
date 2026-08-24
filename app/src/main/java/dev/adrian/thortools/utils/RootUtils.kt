@@ -76,12 +76,13 @@ object RootUtils {
         RootExec().executeAsRoot("printf '%s' 1").getOrNull() == "1"
 
     fun isDeviceRooted(context: Context, rootServiceAvailable: Boolean): Boolean {
-        if (!rootServiceAvailable) return isDeviceRooted
+        val heuristicRooted = isDeviceRooted
+        if (!rootServiceAvailable) return heuristicRooted
         val activeRoot = runRootCommand(
             context,
             "if [ -x /data/adb/magisk/magisk ] || [ -x /data/adb/ksu/bin/ksud ] || [ -x /data/adb/ap/bin/apd ]; then printf '%s' 1; else printf '%s' 0; fi",
         )
-        return activeRoot == "1" || isDeviceRooted
+        return resolveRootState(rootServiceAvailable, activeRoot == "1", heuristicRooted)
     }
 
     fun runRootCommand(context: Context, command: String): String? {
@@ -207,3 +208,9 @@ object RootUtils {
 
     fun resetDpi(context: Context): Boolean = runRootAction(context, "resetprop -p ro.sf.lcd_density")
 }
+
+internal fun resolveRootState(
+    rootServiceAvailable: Boolean,
+    serviceRooted: Boolean,
+    heuristicRooted: Boolean,
+): Boolean = if (rootServiceAvailable) serviceRooted else heuristicRooted
