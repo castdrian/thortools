@@ -6,6 +6,8 @@ object ThorRecoveryGuidance {
             "Diagnostics only: no mutating action is available on this device."
         snapshot.operation.status == OperationStatus.RUNNING ->
             "Operation in progress. Keep the Thor connected and wait for the result."
+        !snapshot.stateReadHealthy && snapshot.operation.status == OperationStatus.INTERRUPTED ->
+            "Thor system state could not be read. Refresh before acknowledging the recovery record."
         snapshot.operation.status == OperationStatus.INTERRUPTED ->
             "Recovery required: acknowledge the recovery record, verify the active slot and image hashes, then retry when the dashboard is ready."
         !snapshot.stateReadHealthy ->

@@ -22,6 +22,15 @@ class ThorRecoveryGuidanceTest {
             "Recovery required: acknowledge the recovery record, verify the active slot and image hashes, then retry when the dashboard is ready.",
             ThorRecoveryGuidance.forSnapshot(snapshot().copy(operation = OperationState(ThorOperation.FLASH, OperationStatus.INTERRUPTED, "interrupted"))),
         )
+        assertEquals(
+            "Thor system state could not be read. Refresh before acknowledging the recovery record.",
+            ThorRecoveryGuidance.forSnapshot(
+                snapshot().copy(
+                    stateReadHealthy = false,
+                    operation = OperationState(ThorOperation.FLASH, OperationStatus.INTERRUPTED, "interrupted"),
+                ),
+            ),
+        )
     }
 
     @Test
