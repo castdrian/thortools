@@ -199,25 +199,38 @@ object RootUtils {
                 rm -rf ${shellQuote(stagingPath)}
                 exit 1
             }
-            [ -s ${shellQuote("$stagingPath/module.prop")} ] || {
+            if [ ! -f ${shellQuote("$stagingPath/module.prop")} ] || [ ! -s ${shellQuote("$stagingPath/module.prop")} ] || [ ! -f ${shellQuote("$stagingPath/system.prop")} ]; then
                 rm -rf ${shellQuote(stagingPath)}
                 exit 1
-            }
+            fi
             if [ -e ${shellQuote(modulePath)} ]; then
                 mv ${shellQuote(modulePath)} ${shellQuote(previousPath)} || {
                     rm -rf ${shellQuote(stagingPath)}
                     exit 1
                 }
             fi
-            if mv ${shellQuote(stagingPath)} ${shellQuote(modulePath)}; then
-                rm -rf ${shellQuote(previousPath)} || exit 1
-                exit 0
+            if ! mv ${shellQuote(stagingPath)} ${shellQuote(modulePath)}; then
+                rm -rf ${shellQuote(stagingPath)}
+                if [ -e ${shellQuote(previousPath)} ]; then
+                    mv ${shellQuote(previousPath)} ${shellQuote(modulePath)} || exit 1
+                fi
+                exit 1
             fi
-            rm -rf ${shellQuote(modulePath)}
-            if [ -e ${shellQuote(previousPath)} ]; then
-                mv ${shellQuote(previousPath)} ${shellQuote(modulePath)} || exit 1
+            if [ ! -f ${shellQuote("$modulePath/module.prop")} ] || [ ! -s ${shellQuote("$modulePath/module.prop")} ] || [ ! -f ${shellQuote("$modulePath/system.prop")} ]; then
+                rm -rf ${shellQuote(modulePath)} || exit 1
+                if [ -e ${shellQuote(previousPath)} ]; then
+                    mv ${shellQuote(previousPath)} ${shellQuote(modulePath)} || exit 1
+                fi
+                exit 1
             fi
-            exit 1
+            if ! rm -rf ${shellQuote(previousPath)}; then
+                rm -rf ${shellQuote(modulePath)} || exit 1
+                if [ -e ${shellQuote(previousPath)} ]; then
+                    mv ${shellQuote(previousPath)} ${shellQuote(modulePath)} || exit 1
+                fi
+                exit 1
+            fi
+            exit 0
             )
         """.trimIndent()
         return runRootAction(context, command) && isThorToolsMagiskModuleInstalled(context)
@@ -226,7 +239,7 @@ object RootUtils {
     fun isThorToolsMagiskModuleInstalled(context: Context): Boolean =
         runRootCommand(
             context,
-            "[ -s ${shellQuote("$MODULE_DIR/thortools/module.prop")} ] && [ -e ${shellQuote("$MODULE_DIR/thortools/system.prop")} ] && printf '%s' 1 || printf '%s' 0",
+            "[ -f ${shellQuote("$MODULE_DIR/thortools/module.prop")} ] && [ -s ${shellQuote("$MODULE_DIR/thortools/module.prop")} ] && [ -f ${shellQuote("$MODULE_DIR/thortools/system.prop")} ] && printf '%s' 1 || printf '%s' 0",
         ) == "1"
 
     fun startActivityRoot(context: Context, activity: String): Boolean = runRootAction(context, "am start -n $activity")

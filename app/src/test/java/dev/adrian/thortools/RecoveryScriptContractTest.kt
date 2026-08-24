@@ -218,8 +218,23 @@ class RecoveryScriptContractTest {
     fun moduleInstallationVerifiesItsDestinationPayload() {
         val source = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
         assertTrue(source.contains("return runRootAction(context, command) && isThorToolsMagiskModuleInstalled(context)"))
+        assertTrue(source.contains("[ -f ${'$'}{shellQuote(\"${'$'}MODULE_DIR/thortools/module.prop\")} ]"))
         assertTrue(source.contains("[ -s ${'$'}{shellQuote(\"${'$'}MODULE_DIR/thortools/module.prop\")} ]"))
-        assertTrue(source.contains("[ -e ${'$'}{shellQuote(\"${'$'}MODULE_DIR/thortools/system.prop\")} ]"))
+        assertTrue(source.contains("[ -f ${'$'}{shellQuote(\"${'$'}MODULE_DIR/thortools/system.prop\")} ]"))
+    }
+
+    @Test
+    fun moduleInstallationValidatesAndRestoresTheAtomicPayload() {
+        val source = File("src/main/java/dev/adrian/thortools/utils/RootUtils.kt").readText()
+        assertTrue(source.contains("[ ! -f ${'$'}{shellQuote(\"${'$'}stagingPath/module.prop\")} ]"))
+        assertTrue(source.contains("[ ! -s ${'$'}{shellQuote(\"${'$'}stagingPath/module.prop\")} ]"))
+        assertTrue(source.contains("[ ! -f ${'$'}{shellQuote(\"${'$'}stagingPath/system.prop\")} ]"))
+        assertTrue(source.contains("[ ! -f ${'$'}{shellQuote(\"${'$'}modulePath/module.prop\")} ]"))
+        assertTrue(source.contains("[ ! -s ${'$'}{shellQuote(\"${'$'}modulePath/module.prop\")} ]"))
+        assertTrue(source.contains("[ ! -f ${'$'}{shellQuote(\"${'$'}modulePath/system.prop\")} ]"))
+        assertTrue(source.contains("if ! mv ${'$'}{shellQuote(stagingPath)} ${'$'}{shellQuote(modulePath)}; then"))
+        assertTrue(source.contains("if ! rm -rf ${'$'}{shellQuote(previousPath)}; then"))
+        assertTrue(source.contains("mv ${'$'}{shellQuote(previousPath)} ${'$'}{shellQuote(modulePath)} || exit 1"))
     }
 
     @Test
