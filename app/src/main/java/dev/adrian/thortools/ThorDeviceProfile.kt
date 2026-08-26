@@ -123,8 +123,10 @@ object DeviceProfile {
             properties.soc,
             properties.platform,
         ).joinToString(" ").normalized()
-        val isThor = searchable.containsThorIdentifier() || isAynThorCodename(properties)
-        return ThorDeviceProfile(properties, isThor, variantFor(properties))
+        val isThor = !hasContradictoryIdentity(properties) &&
+            (searchable.containsThorIdentifier() || isAynThorCodename(properties))
+        val variant = variantFor(properties).takeIf { isThor } ?: ThorVariant.UNKNOWN
+        return ThorDeviceProfile(properties, isThor, variant)
     }
 
     fun variantFor(value: String): ThorVariant {
@@ -188,23 +190,26 @@ object DeviceProfile {
             properties.platform,
         ).map { it.normalized() }
             .any { value -> value in litePlatformIdentifiers }
-        val explicitIdentityValues = listOf(
-            properties.model,
-            properties.device,
-            properties.product,
-            properties.systemDevice,
-            properties.systemName,
-            properties.buildProduct,
-        ).map { it.normalized() }.filter(String::isNotBlank)
-        val hasContradictoryIdentity = explicitIdentityValues.any { value ->
+        val identityConflict = hasContradictoryIdentity(properties)
+        val board = properties.board.normalized()
+        val hasCompatibleBoard = board.isBlank() || board in thorBoardIdentifiers || board in litePlatformIdentifiers
+        return hasAynIdentity && !identityConflict && (hasThorCodename || hasLitePlatform) && hasCompatibleBoard
+    }
+
+    private fun hasContradictoryIdentity(properties: DeviceProperties): Boolean = listOf(
+        properties.model,
+        properties.device,
+        properties.product,
+        properties.systemDevice,
+        properties.systemName,
+        properties.buildProduct,
+    ).map { it.normalized() }
+        .filter(String::isNotBlank)
+        .any { value ->
             value !in neutralIdentityIdentifiers &&
                 value !in thorIdentityIdentifiers &&
                 !value.containsThorIdentifier()
         }
-        val board = properties.board.normalized()
-        val hasCompatibleBoard = board.isBlank() || board in thorBoardIdentifiers || board in litePlatformIdentifiers
-        return hasAynIdentity && !hasContradictoryIdentity && (hasThorCodename || hasLitePlatform) && hasCompatibleBoard
-    }
 
     private fun String.normalized(): String = identifierSeparatorPattern.replace(lowercase(), " ").trim()
 

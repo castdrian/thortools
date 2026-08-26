@@ -60,6 +60,20 @@ class ThorDeviceProfileTest {
     }
 
     @Test
+    fun rejectsConflictingThorAndOdinIdentities() {
+        val conflictingModel = DeviceProfile.detect(
+            DeviceProperties(model = "AYN Thor Pro", device = "odin2"),
+        )
+        assertFalse(conflictingModel.isThor)
+        assertEquals(ThorVariant.UNKNOWN, conflictingModel.variant)
+        assertFalse(
+            DeviceProfile.detect(
+                DeviceProperties(product = "thor", buildProduct = "odin2"),
+            ).isThor,
+        )
+    }
+
+    @Test
     fun classifiesThorDisplayGeometry() {
         assertTrue(DeviceProfile.isThorLowerDisplay(1240, 1080))
         assertTrue(DeviceProfile.isThorLowerDisplay(1240, 1080, DeviceProfile.THOR_DISPLAY_ROTATION))
