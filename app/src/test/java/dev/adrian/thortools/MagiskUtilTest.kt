@@ -37,6 +37,13 @@ class MagiskUtilTest {
     }
 
     @Test
+    fun recognizesMagiskFromEitherTheManagerOrTheRootRuntime() {
+        assertTrue(MagiskUtil.resolveMagiskAvailability(packageInstalled = true, rootRuntimeAvailable = false))
+        assertTrue(MagiskUtil.resolveMagiskAvailability(packageInstalled = false, rootRuntimeAvailable = true))
+        assertFalse(MagiskUtil.resolveMagiskAvailability(packageInstalled = false, rootRuntimeAvailable = false))
+    }
+
+    @Test
     fun validatesTheDownloadedArchiveBeforeOpeningTheInstaller() {
         val source = File("src/main/java/dev/adrian/thortools/utils/MagiskUtil.kt").readText()
         assertTrue(source.contains("getPackageArchiveInfo"))

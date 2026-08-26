@@ -455,7 +455,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         val properties = SystemUtils.getDeviceProperties()
         val rootService = RootUtils.isPServerResponsive()
         val rooted = RootUtils.isDeviceRooted(context, rootService)
-        val magisk = MagiskUtil.hasMagiskPackage(context)
+        val magisk = MagiskUtil.isMagiskAvailable(context, rootService)
         val battery = SystemUtils.getBatteryPercent(context)
         val prefs = AppSettings.getSharedPrefs(context)
         val liveDpi = rootService.takeIf { it }?.let { RootUtils.readDpi(context) }

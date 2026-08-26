@@ -191,6 +191,15 @@ object MagiskUtil {
 
     fun hasMagiskPackage(context: Context): Boolean = RootUtils.isPackageInstalled(context, MAGISK_PACKAGE_NAME)
 
+    fun isMagiskAvailable(context: Context, rootServiceAvailable: Boolean): Boolean =
+        resolveMagiskAvailability(
+            packageInstalled = hasMagiskPackage(context),
+            rootRuntimeAvailable = rootServiceAvailable && hasRootMagiskUtils(context),
+        )
+
+    internal fun resolveMagiskAvailability(packageInstalled: Boolean, rootRuntimeAvailable: Boolean): Boolean =
+        packageInstalled || rootRuntimeAvailable
+
     fun installLocalMagiskUtils(context: Context): Boolean {
         val destination = File(FileUtils.getPathAppFiles(context, "/magisk"))
         val sourceApk = File(getMagiskAppPath(context))
