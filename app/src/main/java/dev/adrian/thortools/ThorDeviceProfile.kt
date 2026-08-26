@@ -181,9 +181,29 @@ object DeviceProfile {
             properties.buildProduct,
         ).map { it.normalized() }
             .any { value -> value in thorCodenameIdentifiers }
+        val hasLitePlatform = listOf(
+            properties.board,
+            properties.hardware,
+            properties.soc,
+            properties.platform,
+        ).map { it.normalized() }
+            .any { value -> value in litePlatformIdentifiers }
+        val explicitIdentityValues = listOf(
+            properties.model,
+            properties.device,
+            properties.product,
+            properties.systemDevice,
+            properties.systemName,
+            properties.buildProduct,
+        ).map { it.normalized() }.filter(String::isNotBlank)
+        val hasContradictoryIdentity = explicitIdentityValues.any { value ->
+            value !in neutralIdentityIdentifiers &&
+                value !in thorIdentityIdentifiers &&
+                !value.containsThorIdentifier()
+        }
         val board = properties.board.normalized()
-        val hasCompatibleBoard = board.isBlank() || board in thorBoardIdentifiers
-        return hasAynIdentity && hasThorCodename && hasCompatibleBoard
+        val hasCompatibleBoard = board.isBlank() || board in thorBoardIdentifiers || board in litePlatformIdentifiers
+        return hasAynIdentity && !hasContradictoryIdentity && (hasThorCodename || hasLitePlatform) && hasCompatibleBoard
     }
 
     private fun String.normalized(): String = identifierSeparatorPattern.replace(lowercase(), " ").trim()
@@ -192,8 +212,11 @@ object DeviceProfile {
         thorPattern.containsMatchIn(this) || split(' ').any(compactThorPattern::matches)
 
     private val litePlatformPattern = Regex("(^|\\s)(sm8250|kona)(\\s|$)")
+    private val litePlatformIdentifiers = setOf("sm8250", "kona")
     private val thorCodenameIdentifiers = setOf("kalama", "odin2thor")
     private val thorBoardIdentifiers = setOf("kalama", "sm8550", "qcs8550")
+    private val thorIdentityIdentifiers = thorCodenameIdentifiers + thorBoardIdentifiers + litePlatformIdentifiers
+    private val neutralIdentityIdentifiers = setOf("ayn", "android", "unknown", "qcom", "qualcomm")
 
     fun isThorLowerDisplay(
         widthPixels: Int,

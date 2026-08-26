@@ -29,6 +29,8 @@ class ThorDeviceProfileTest {
         assertTrue(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", model = "Thor")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", device = "kalama", board = "kalama")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(brand = "AYN", product = "KALAMA", board = "KALAMA")).isThor)
+        assertTrue(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", board = "kona")).isThor)
+        assertEquals(ThorVariant.LITE, DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", board = "sm8250")).variant)
         assertTrue(DeviceProfile.detect(DeviceProperties(hardware = "thor_lite")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(board = "thor_max_board")).isThor)
     }
@@ -53,6 +55,7 @@ class ThorDeviceProfileTest {
         assertFalse(DeviceProfile.detect(DeviceProperties(manufacturer = "Qualcomm", board = "kalama")).isThor)
         assertFalse(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", board = "kalama")).isThor)
         assertFalse(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", device = "odin2", board = "kalama")).isThor)
+        assertFalse(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", device = "odin2", board = "sm8250")).isThor)
         assertFalse(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", board = "kalama_fake")).isThor)
     }
 
